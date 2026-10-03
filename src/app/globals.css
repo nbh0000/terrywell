@@ -1,0 +1,35 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import "tailwindcss";
+
+/* 테리웰 디자인 토큰: 흰 배경 + 짙은 네이비 포인트 1색 */
+@theme {
+  --color-ink: #1d1f24;          /* 본문 */
+  --color-muted: #6b6f78;        /* 보조 글자 */
+  --color-line: #e6e6e3;         /* 얇은 구분선 */
+  --color-paper: #ffffff;
+  --color-cloud: #f6f6f4;        /* 옅은 면, placeholder */
+  --color-point: #26407a;        /* 로고 네이비 */
+  --color-point-dark: #1b2f5b;
+  --color-alert: #d9443f;        /* 에디터 [편집종료] 전용 */
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-serif: var(--font-logo), "Times New Roman", serif;
+  --font-display: var(--font-poppins), var(--font-sans);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+/* 키보드 포커스만 표시 */
+:focus-visible {
+  outline: 2px solid var(--color-point);
+  outline-offset: 2px;
+}
