@@ -1,15 +1,17 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
 
-/* 테리웰 디자인 토큰: 흰 배경 + 짙은 네이비 포인트 1색 */
+/* 테리웰 디자인 토큰 */
 @theme {
-  --color-ink: #1d1f24;          /* 본문 */
-  --color-muted: #6b6f78;        /* 보조 글자 */
-  --color-line: #e6e6e3;         /* 얇은 구분선 */
-  --color-paper: #ffffff;
-  --color-cloud: #f6f6f4;        /* 옅은 면, placeholder */
-  --color-point: #26407a;        /* 로고 네이비 */
-  --color-point-dark: #1b2f5b;
+  /* 값은 reference/ 시안에서 뽑았다 */
+  --color-ink: #1f2f36;          /* 제목·본문, 짙은 남색 (CUSTOM LABEL, Better, 버튼) */
+  --color-muted: #6f7679;        /* 보조 글자 */
+  --color-line: #d9dcdc;         /* 헤더 아래선 등 */
+  --color-paper: #ffffff;        /* 푸터, 카드 */
+  --color-page: #f5f6f6;         /* 페이지 바탕 */
+  --color-cloud: #eceeee;        /* placeholder */
+  --color-point: #4c77b4;        /* 로고 파랑 */
+  --color-point-dark: #3b62a0;
   --color-alert: #d9443f;        /* 에디터 [편집종료] 전용 */
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -22,7 +24,7 @@ html {
 }
 
 body {
-  background: var(--color-paper);
+  background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
   letter-spacing: -0.01em;

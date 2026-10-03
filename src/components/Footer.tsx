@@ -1,42 +1,34 @@
 import { IMAGES } from "@/content/images";
 import { getSetting } from "@/lib/site";
 
+// reference/01 시안 푸터: 왼쪽 심볼 로고 + 대표 전화, 오른쪽 사업자 정보
 export async function Footer() {
   const c = await getSetting("company");
-  const rows = [
-    c.company_name,
-    `사업장 주소 ${c.address}`,
-    `대표자 ${c.ceo}`,
-    `사업자등록번호 ${c.business_number}`,
-    `통신판매업 신고번호 ${c.mail_order_number}`,
-    `전화 ${c.phone}`,
-    `이메일 ${c.email}`,
-  ];
 
   return (
-    <footer className="mt-auto border-t border-line">
-      <div className="mx-auto flex max-w-[1280px] flex-col gap-10 px-5 py-12 md:flex-row md:items-start md:justify-between md:px-8 md:py-14">
-        <div className="flex items-start gap-5">
-          {IMAGES.logoSymbol ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={IMAGES.logoSymbol} alt="TERRYWELL" className="h-14 w-auto" />
-          ) : (
-            <span className="font-serif text-sm font-bold tracking-[0.06em] text-point">TERRYWELL</span>
-          )}
+    <footer className="mt-auto border-t border-line bg-paper">
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-10 px-5 py-12 md:flex-row md:items-center md:justify-between md:px-16 md:py-14">
+        <div className="flex items-center gap-6 md:gap-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={IMAGES.logoFooter} alt="TERRYWELL" className="h-[84px] w-auto md:h-[102px]" />
           <div>
-            <a href={`tel:${c.phone.replace(/[^0-9]/g, "")}`} className="block text-2xl font-medium tracking-tight text-ink md:text-[1.75rem]">
+            <a href={`tel:${c.phone.replace(/[^0-9]/g, "")}`} className="block font-serif text-[1.6rem] font-normal leading-none tracking-[0.01em] text-ink md:text-[2rem]" style={{ fontFamily: "var(--font-footer-num)" }}>
               {c.phone}
             </a>
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-2.5 text-[12px] text-ink/80">
               {c.hours_weekday} / {c.hours_lunch}
             </p>
           </div>
         </div>
-        <ul className="space-y-1 text-xs leading-relaxed text-muted md:text-right">
-          {rows.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
+        <div className="text-[12px] leading-[1.6] text-ink/85">
+          <p className="font-semibold text-ink">{c.company_name}</p>
+          <p>사업장 주소&nbsp; {c.address}</p>
+          <p>대표자명&nbsp; {c.ceo}</p>
+          <p>사업자등록번호&nbsp; {c.business_number}</p>
+          <p>통신판매업번호&nbsp; {c.mail_order_number}</p>
+          <p className="mt-3">{c.phone}</p>
+          <p>{c.email}</p>
+        </div>
       </div>
     </footer>
   );

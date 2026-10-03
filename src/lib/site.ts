@@ -25,15 +25,16 @@ export interface HomeContent {
 
 export const DEFAULT_SETTINGS = {
   company: {
+    // 시안 푸터 값. 통신판매업번호는 시안에 비어 있다
     company_name: "주식회사 테리웰",
-    address: "대전광역시 (주소 입력 예정)",
-    ceo: "(대표자명)",
-    business_number: "000-00-00000",
-    mail_order_number: "제0000-대전-0000호",
+    address: "대전광역시 대덕구 무지니1길 49",
+    ceo: "이수빈",
+    business_number: "381-86-04118",
+    mail_order_number: "",
     phone: "042-0000-0000",
     email: "sales@terrywell.kr",
     hours_weekday: "월-금 10:00 - 17:00",
-    hours_lunch: "점심시간 11:30 - 13:00",
+    hours_lunch: "점심시간 11:30-13:00",
   } satisfies CompanyInfo,
   ai: { enabled: true, daily_free_limit: 10, styles: ["일러스트", "미니멀", "수채화", "로고형", "패턴"] },
 };
@@ -55,6 +56,39 @@ export const DEFAULT_CONTENTS = {
       href: "/products/lollipop-stripe-towel",
     },
   } satisfies HomeContent,
+  // 문구는 reference/01 시안 그대로. 문단 = 줄 배열
+  about: {
+    heading: ["Better", "Better", "Better"],
+    image1: IMAGES.about1,
+    image2: IMAGES.about2,
+    paragraphs: [
+      ["하루는 모두에게 같은 시간으로 주어지지만,그 안에 담긴 이야기는", "모두 다릅니다."],
+      ["분주한 아침,여유로운 오후, 소중한 사람과 함께하는 순간,", "혼자만의 쉼을 누리는 시간까지."],
+      ["우리는 저마다의 일상이 그 자체로 충분히 소중하다고 믿습니다."],
+      ["Terrywell은 단순히 수건을 만드는 것이 아니라,", "당신의 하루를 함께하는 순간을 생각합니다."],
+      ["매일 가장 가까이에서 닿는 한 장의 수건이 익숙한 일상 속 작은", "편안함이 되고, 오래 기억될 따뜻한 순간이 되기를 바랍니다."],
+      ["우리는 수건에 여러분의 일상을 담습니다."],
+    ],
+  },
+  customLabel: {
+    image: IMAGES.customLabel,
+    title: "CUSTOM LABEL",
+    paragraphs: [
+      [
+        "자수는 오랫동안 사랑받아온 제작 방식이지만, 색상과 디자인 표현에는 일정한 제약이 있었습니다.",
+        "더 다양한 고객의 아이디어를 담기 위해 원하는 디자인 그대로 제작하는 커스텀 라벨 서비스를 시작했습니다.",
+      ],
+      [
+        "커스텀 라벨은 고객이 직접 원하는 디자인으로 제작하는 맞춤형 라벨입니다.",
+        "사진, 로고, 문구, 일러스트, 캐릭터 등 원하는 콘텐츠를 자유롭게 담을 수 있으며,색상과 형태의 제약 없이",
+        "브랜드와 제품에 어울리는 라벨을 제작해 드립니다.",
+      ],
+      [
+        "브랜드 홍보, 제품 패키지, 광고, 이벤트, 굿즈 등 다양한 분야에서 활용할 수 있으며",
+        "하나의 라벨에도 브랜드만의 개성과 가치를 담아드립니다.",
+      ],
+    ],
+  },
 };
 
 type Settings = typeof DEFAULT_SETTINGS;

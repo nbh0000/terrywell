@@ -1,46 +1,78 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { ImageBox } from "@/components/Placeholder";
 import { getContent } from "@/lib/site";
 
+// reference/01 "인트로 페이지" 시안 배치. 시안 폭 858px 기준 비율을 vw 로 옮겼다.
 export default async function Home() {
   const { hero, cards, banner } = await getContent("home");
 
   return (
     <>
-      {/* 히어로: 화면 너비 가득 */}
-      <section className="relative">
-        <ImageBox src={hero.image} alt="TERRYWELL" className="h-[68svh] min-h-[420px] w-full md:h-[78svh]" label="HERO IMAGE" />
-        <div className="absolute inset-0 mx-auto flex max-w-[1280px] flex-col justify-center px-5 md:px-8">
-          <h1 className="font-serif text-[2.1rem] font-bold leading-none tracking-[0.05em] text-point sm:text-[2.8rem] md:text-[4.5rem]">{hero.title}</h1>
-          <p className="mt-3 text-[15px] text-point/90 md:mt-4 md:text-xl">{hero.slogan}</p>
+      {/* 히어로: 커튼 사진, 왼쪽에 TERRYWELL + 슬로건 */}
+      <section className="relative w-full overflow-hidden bg-cloud" style={{ aspectRatio: "858 / 450" }}>
+        {hero.image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={hero.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        <div className="absolute left-[5.8%] top-[38%]">
+          <h1 className="font-serif text-[clamp(2.2rem,5.15vw,5.6rem)] font-extrabold leading-[0.95] tracking-[0.005em] text-point">
+            {hero.title}
+          </h1>
+          <p className="mt-[0.5vw] font-display text-[clamp(0.85rem,1.62vw,1.75rem)] font-light tracking-[-0.005em] text-point">
+            {hero.slogan}
+          </p>
         </div>
       </section>
 
       {/* 카테고리 카드 4개 */}
-      <section className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-3 px-5 py-12 md:grid-cols-4 md:gap-6 md:px-8 md:py-20">
-        {cards.map((c) => (
-          <Link key={c.title} href={c.href} className="group relative block overflow-hidden rounded-[28%/20%]">
-            <ImageBox src={c.image} alt={c.title} ratio="3 / 4" className="transition-transform duration-700 ease-out group-hover:scale-[1.03]" label="" tone="mid" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 text-center text-white">
-              <span className="font-display text-lg font-medium md:text-xl">{c.title}</span>
-              <span className="mt-0.5 text-xs md:text-sm">{c.subtitle}</span>
-            </div>
-          </Link>
-        ))}
+      <section className="w-full px-[2.6%] pb-[7.6%] pt-[4.9%]">
+        <div className="grid grid-cols-2 gap-[3vw] md:grid-cols-4 md:gap-[2.1%]">
+          {cards.map((c) => (
+            <Link
+              key={c.title}
+              href={c.href}
+              className="group relative block overflow-hidden bg-cloud [border-radius:24%/19%]"
+              style={{ aspectRatio: "190 / 238" }}
+            >
+              {c.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.image} alt="" className="absolute inset-0 h-full w-full scale-[1.06] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.1]" />
+              )}
+              <div className="absolute inset-x-0 top-[44%] -translate-y-1/2 text-center font-display leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.18)]">
+                <div className="text-[clamp(1rem,1.75vw,1.6rem)]">{c.title}</div>
+                <div className="text-[clamp(0.8rem,1.45vw,1.3rem)]">{c.subtitle}</div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* 신제품 배너 */}
-      <section className="relative">
-        <ImageBox src={banner.image} alt={banner.title} className="h-[52svh] min-h-[340px] w-full" label="BANNER IMAGE" tone="mid" />
-        <div className="absolute inset-0 mx-auto flex max-w-[1280px] flex-col justify-center px-5 md:px-8">
-          <span className="mb-3 w-fit rounded-[3px] bg-point px-2 py-0.5 font-display text-[11px] font-medium tracking-wider text-white">{banner.badge}</span>
-          <h2 className="max-w-[10ch] font-display text-3xl font-medium leading-tight text-white drop-shadow-sm md:text-5xl">{banner.title}</h2>
+      <section className="relative w-full overflow-hidden bg-cloud" style={{ aspectRatio: "858 / 259" }}>
+        {banner.image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={banner.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        <span
+          className="absolute right-[2.6%] top-[7%] grid w-[11.2%] place-items-center bg-point font-serif text-[clamp(0.7rem,1.6vw,1.5rem)] text-white"
+          style={{
+            aspectRatio: "96 / 50",
+            clipPath:
+              "polygon(50% 0%, 58% 14%, 72% 4%, 74% 22%, 92% 16%, 86% 36%, 100% 44%, 86% 56%, 94% 78%, 74% 74%, 70% 96%, 57% 82%, 46% 100%, 39% 80%, 24% 94%, 24% 72%, 6% 76%, 13% 56%, 0% 44%, 15% 34%, 8% 14%, 27% 20%, 31% 2%, 42% 16%)",
+          }}
+        >
+          {banner.badge}
+        </span>
+        <div className="absolute left-[3.8%] top-[27%]">
+          {/* 시안처럼 첫 단어 / 나머지 두 줄 */}
+          <h2 className="font-display text-[clamp(1.5rem,3.45vw,3.4rem)] font-normal leading-[1.18] text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.12)]">
+            <span className="block">{banner.title.split(" ")[0]}</span>
+            <span className="block">{banner.title.split(" ").slice(1).join(" ")}</span>
+          </h2>
           <Link
             href={banner.href}
-            className="mt-6 inline-flex w-fit items-center gap-1.5 rounded-[3px] border border-white/80 bg-white/90 px-4 py-2 text-sm text-ink transition-colors hover:bg-white"
+            className="mt-[1.6vw] inline-flex items-center gap-1 rounded-full border border-point/60 bg-white px-[1.1em] py-[0.35em] text-[clamp(0.7rem,1.05vw,1rem)] text-point transition-colors hover:bg-point hover:text-white"
           >
-            {banner.button} <ArrowRight size={14} />
+            {banner.button} <span aria-hidden>→</span>
           </Link>
         </div>
       </section>

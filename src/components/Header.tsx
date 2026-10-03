@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Heart, Search, ShoppingBag, User } from "lucide-react";
+import { BookOpen, Heart, LogIn, Search, ShoppingBag, User } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
+import { NavLinks } from "./NavLinks";
 import { logoutAction } from "@/app/(site)/(auth)/actions";
 
 export const NAV = [
@@ -25,21 +26,15 @@ export async function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-line bg-page/95 backdrop-blur">
       {/* PC */}
-      <div className="mx-auto hidden h-[76px] max-w-[1280px] items-center px-8 lg:flex">
+      <div className="mx-auto hidden h-[78px] max-w-[1280px] items-center px-8 lg:flex">
         <Logo />
-        <nav className="ml-14 flex gap-10 text-[15px]">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="text-ink/80 transition-colors hover:text-point">
-              {n.label}
-            </Link>
-          ))}
-        </nav>
+        <NavLinks nav={NAV} />
         <div className="ml-auto flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-5">
             {icons.map(({ href, label, Icon, badge }) => (
-              <Link key={href} href={href} aria-label={label} className="relative text-ink/80 transition-colors hover:text-point">
+              <Link key={href} href={href} aria-label={label} className="relative text-ink transition-colors hover:text-point">
                 <Icon size={20} strokeWidth={1.5} />
                 {badge ? (
                   <span className="absolute -right-2 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-point px-1 text-[10px] font-medium text-white">
@@ -49,21 +44,17 @@ export async function Header() {
               </Link>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted">
+          <div className="flex items-center gap-3 text-[12px] text-point">
             {user ? (
               <form action={logoutAction}>
-                <button type="submit" className="hover:text-ink">로그아웃</button>
+                <button type="submit" className="inline-flex items-center gap-1 hover:text-point-dark"><LogIn size={13} strokeWidth={1.6} />로그아웃</button>
               </form>
             ) : (
-              <Link href="/login" className="hover:text-ink">로그인/회원가입</Link>
+              <Link href="/login" className="inline-flex items-center gap-1 hover:text-point-dark"><LogIn size={13} strokeWidth={1.6} />로그인/회원가입</Link>
             )}
-            <span className="text-line">|</span>
-            <Link href="/guide" className="hover:text-ink">이용가이드</Link>
+            <Link href="/guide" className="inline-flex items-center gap-1 hover:text-point-dark"><BookOpen size={13} strokeWidth={1.6} />이용가이드</Link>
             {user?.role === "admin" && (
-              <>
-                <span className="text-line">|</span>
-                <Link href="/admin" className="hover:text-ink">관리자</Link>
-              </>
+              <Link href="/admin" className="hover:text-point-dark">관리자</Link>
             )}
           </div>
         </div>
@@ -73,7 +64,7 @@ export async function Header() {
       <div className="flex h-14 items-center justify-between px-4 lg:hidden">
         <MobileMenu nav={NAV} loggedIn={!!user} isAdmin={user?.role === "admin"} />
         <Logo />
-        <Link href="/cart" aria-label="장바구니" className="relative p-1 text-ink/80">
+        <Link href="/cart" aria-label="장바구니" className="relative p-1 text-ink">
           <ShoppingBag size={22} strokeWidth={1.5} />
           {cartCount ? (
             <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-point px-1 text-[10px] font-medium text-white">

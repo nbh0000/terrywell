@@ -22,7 +22,7 @@ export function buildSeed() {
       category_slugs: ["best", "new", "towel"],
       is_visible: true,
       sort_order: 1,
-      images: [{ url: null, alt: "롤리팝 스트라이프 타월" }],
+      images: [{ url: "/images/draft/product-lollipop.jpg", alt: "롤리팝 스트라이프 타월" }],
       specs: [
         { label: "소재", value: "40수 (그라운드 - 코튼 100% / 스트라이프 - 면 50% 극세사 25% 대나무 25%)" },
         { label: "중량", value: "200g" },
