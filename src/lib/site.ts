@@ -25,13 +25,13 @@ export interface HomeContent {
 
 export const DEFAULT_SETTINGS = {
   company: {
-    // 시안 푸터 값. 통신판매업번호는 시안에 비어 있다
+    // 시안 푸터 값 + 고객 정보.txt. 통신판매업번호는 아직 없다
     company_name: "주식회사 테리웰",
     address: "대전광역시 대덕구 무지니1길 49",
     ceo: "이수빈",
     business_number: "381-86-04118",
     mail_order_number: "",
-    phone: "042-0000-0000",
+    phone: "042-716-4997", // assets/website/정보.txt
     email: "sales@terrywell.kr",
     hours_weekday: "월-금 10:00 - 17:00",
     hours_lunch: "점심시간 11:30-13:00",

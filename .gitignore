@@ -46,3 +46,7 @@ next-env.d.ts
 
 # 원본 시안 (용량이 커서 저장소에 넣지 않음)
 /reference/original/
+
+# 고객 원본 사진 (용량 큼, 필요한 것만 public/images 로 변환해 쓴다)
+/assets/website/
+/assets/products/

@@ -22,7 +22,10 @@ export function buildSeed() {
       category_slugs: ["best", "new", "towel"],
       is_visible: true,
       sort_order: 1,
-      images: [{ url: "/images/draft/product-lollipop.jpg", alt: "롤리팝 스트라이프 타월" }],
+      images: [
+        { url: "/images/site/product-lollipop.jpg", alt: "롤리팝 스트라이프 타월" },
+        { url: "/images/products/lollipop/stack-mixed.jpg", alt: "롤리팝 스트라이프 타월 5색" },
+      ],
       specs: [
         { label: "소재", value: "40수 (그라운드 - 코튼 100% / 스트라이프 - 면 50% 극세사 25% 대나무 25%)" },
         { label: "중량", value: "200g" },
@@ -63,17 +66,22 @@ export function buildSeed() {
     ["melon", "#b5d9ad"],
     ["berry", "#c8b1d9"],
   ];
+  const P = "/images/products/lollipop";
+  // 목업(정면샷) 위 라벨 위치: 오른쪽 위 세로 라벨 자리 (이미지 대비 %, 3단계 에디터 미리보기용)
   const product_colors: Tables["product_colors"][] = colors.map(([name, swatch], i) => ({
     id: randomUUID(),
     product_id: productId,
     name,
     swatch,
-    images: [],
-    mockup_url: null,
-    label_x: 72,
-    label_y: 84,
-    label_w: 16,
-    label_rotate: 0,
+    images: [
+      { url: `${P}/stack-${name}.jpg`, alt: `${name} 5장` },
+      { url: `${P}/front-${name}.jpg`, alt: `${name} 정면` },
+    ],
+    mockup_url: `${P}/front-${name}.jpg`,
+    label_x: 91.6,
+    label_y: 15.5,
+    label_w: 4.2,
+    label_rotate: 90,
     sort_order: i,
   }));
 
