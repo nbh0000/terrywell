@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
 const SETTINGS = ["company", "shipping"];
-const CONTENTS = ["home", "about", "customLabel", "editorGuide", "pdfConsent"];
+const CONTENTS = ["home", "about", "customLabel", "editorGuide", "pdfConsent", "legal"];
 
 export async function saveSiteAction(key: string, value: unknown): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin();

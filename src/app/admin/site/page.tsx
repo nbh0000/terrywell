@@ -5,7 +5,7 @@ import { SiteForm } from "./SiteForm";
 export const metadata = { title: "사이트 설정" };
 
 export default async function AdminSite() {
-  const [company, shipping, home, about, customLabel, editorGuide, pdfConsent] = await Promise.all([
+  const [company, shipping, home, about, customLabel, editorGuide, pdfConsent, legal] = await Promise.all([
     getSetting("company"),
     getSetting("shipping"),
     getContent("home"),
@@ -13,11 +13,12 @@ export default async function AdminSite() {
     getContent("customLabel"),
     getContent("editorGuide"),
     getContent("pdfConsent"),
+    getContent("legal"),
   ]);
   return (
     <>
       <PageTitle title="사이트 설정 · 콘텐츠" />
-      <SiteForm initial={{ company, shipping, home, about, customLabel, editorGuide, pdfConsent }} />
+      <SiteForm initial={{ company, shipping, home, about, customLabel, editorGuide, pdfConsent, legal }} />
     </>
   );
 }

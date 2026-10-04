@@ -8,13 +8,14 @@ export default async function Home() {
   return (
     <>
       {/* 히어로: 커튼 사진, 왼쪽에 TERRYWELL + 슬로건 */}
-      <section className="relative w-full overflow-hidden bg-cloud" style={{ aspectRatio: "858 / 450" }}>
+      {/* 모바일은 시안 비율이면 너무 낮아 조금 키운다 */}
+      <section className="relative aspect-[4/3] w-full overflow-hidden bg-cloud sm:aspect-[858/450]">
         {hero.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={hero.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
         )}
-        <div className="absolute left-[5.8%] top-[38%]">
-          <h1 className="font-serif text-[clamp(2.2rem,5.15vw,5.6rem)] font-extrabold leading-[0.95] tracking-[0.005em] text-point">
+        <div className="absolute left-[5.8%] top-[34%] sm:top-[38%]">
+          <h1 className="font-serif text-[clamp(2.3rem,5.15vw,5.6rem)] font-extrabold leading-[0.95] tracking-[0.005em] text-point">
             {hero.title}
           </h1>
           <p className="mt-[0.5vw] font-display text-[clamp(0.85rem,1.62vw,1.75rem)] font-light tracking-[-0.005em] text-point">
@@ -47,7 +48,7 @@ export default async function Home() {
       </section>
 
       {/* 신제품 배너 */}
-      <section className="relative w-full overflow-hidden bg-cloud" style={{ aspectRatio: "858 / 259" }}>
+      <section className="relative aspect-[16/10] w-full overflow-hidden bg-cloud sm:aspect-[858/259]">
         {banner.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={banner.image} alt="" className="absolute inset-0 h-full w-full object-cover" />

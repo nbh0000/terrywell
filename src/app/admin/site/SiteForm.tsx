@@ -14,6 +14,7 @@ interface Data {
   customLabel: { image: string; title: string; paragraphs: string[][] };
   editorGuide: { notes: { title: string; body: string }[] };
   pdfConsent: { items: string[] };
+  legal: { terms: string; privacy: string };
 }
 
 // 문단 = 빈 줄로 구분, 문단 안 줄바꿈 = 화면 줄바꿈
@@ -113,6 +114,13 @@ export function SiteForm({ initial }: { initial: Data }) {
           {[0, 1].map((i) => (
             <textarea key={i} rows={2} className={textareaCls} value={d.pdfConsent.items[i] ?? ""} onChange={(e) => set("pdfConsent", { items: [0, 1].map((j) => (j === i ? e.target.value : d.pdfConsent.items[j] ?? "")) })} aria-label={`동의 ${i + 1}`} />
           ))}
+        </div>
+      </Section>
+      <Section title="이용약관 · 개인정보처리방침 (HTML)" onSave={() => saveSiteAction("legal", d.legal)}>
+        <p className="mb-2 text-[12.5px] text-alert">기본값은 사이트 기능 기준 초안입니다. 실제 내용은 고객사 확인 후 확정해 주세요.</p>
+        <div className="grid gap-3 xl:grid-cols-2">
+          <Label label="이용약관"><textarea rows={14} className={textareaCls} value={d.legal.terms} onChange={(e) => set("legal", { ...d.legal, terms: e.target.value })} /></Label>
+          <Label label="개인정보처리방침"><textarea rows={14} className={textareaCls} value={d.legal.privacy} onChange={(e) => set("legal", { ...d.legal, privacy: e.target.value })} /></Label>
         </div>
       </Section>
     </div>
