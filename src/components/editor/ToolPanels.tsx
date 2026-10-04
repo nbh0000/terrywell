@@ -41,7 +41,7 @@ export function ToolPanel(p: {
     case "design":
       return <DesignPanel ed={p.ed} templates={p.templates} />;
     case "ai":
-      return <AiPanel loggedIn={p.loggedIn} />;
+      return <AiPanel ed={p.ed} label={p.label} loggedIn={p.loggedIn} />;
     case "sticker":
       return <StickerPanel ed={p.ed} stickers={p.stickers} />;
     case "background":
@@ -155,6 +155,7 @@ function PhotoPanel({ ed, photos, setPhotos }: { ed: EditorApi; photos: { id: st
           ))}
         </ul>
       )}
+      <MyAiImages ed={ed} />
     </div>
   );
 }
@@ -232,15 +233,125 @@ function DesignPanel({ ed, templates }: { ed: EditorApi; templates: EditorTempla
   );
 }
 
-function AiPanel({ loggedIn }: { loggedIn: boolean }) {
+type AiMe = { loggedIn: boolean; quota?: { enabled: boolean; limit: number; used: number; remaining: number; styles: string[] }; images?: string[] };
+
+function useAiMe() {
+  const [me, setMe] = useState<AiMe | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/ai/me").then((r) => r.json()).then((d) => alive && setMe(d)).catch(() => alive && setMe({ loggedIn: false }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return [me, setMe] as const;
+}
+
+function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; loggedIn: boolean }) {
+  const [me, setMe] = useAiMe();
+  const [prompt, setPrompt] = useState("");
+  const [style, setStyle] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [results, setResults] = useState<string[]>([]);
+
+  if (!loggedIn || me?.loggedIn === false) {
+    return (
+      <p className="py-4 text-center text-[14px] text-muted">
+        AI 생성은{" "}
+        <Link href={`/login?next=${encodeURIComponent(typeof location !== "undefined" ? location.pathname + location.search : "/")}`} className="text-ink underline">로그인</Link>
+        {" "}후 사용할 수 있습니다. 지금 편집한 내용은 임시 저장됩니다.
+      </p>
+    );
+  }
+  const q = me?.quota;
+  const styles = q?.styles ?? [];
+  const disabled = busy || !q || !q.enabled || q.remaining <= 0 || prompt.trim().length < 2;
+
+  async function generate() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, style: style ?? "", aspect: { w: label.widthMm, h: label.heightMm } }),
+      });
+      const data = await res.json();
+      if (data.quota) setMe((m) => (m ? { ...m, quota: data.quota, images: [...(data.images ?? []), ...(m.images ?? [])] } : m));
+      if (!res.ok) throw new Error(data.error ?? "생성하지 못했습니다.");
+      setResults(data.images);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "생성하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="py-2 text-center text-[14px] text-muted">
-      AI 디자인 생성은 다음 작업 단계에서 연결합니다.
-      {!loggedIn && (
-        <p className="mt-1 text-[12px]">
-          AI 생성은 <Link href="/login" className="underline">로그인</Link> 후 사용할 수 있습니다.
-        </p>
+    <div>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        maxLength={500}
+        rows={2}
+        placeholder="예) 레몬과 잎사귀, 파스텔 톤"
+        className="w-full resize-none rounded-[8px] border border-line p-3 text-[14px] outline-none focus:border-ink/50"
+        aria-label="만들고 싶은 그림"
+      />
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {styles.map((s) => (
+          <button key={s} type="button" onClick={() => setStyle(style === s ? null : s)} className={`rounded-full border px-3 py-1 text-[13px] ${style === s ? "border-ink bg-ink text-white" : "border-line"}`}>
+            {s}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <button type="button" disabled={disabled} onClick={generate} className="h-11 flex-1 rounded-[8px] bg-ink text-[15px] text-white disabled:opacity-40">
+          {busy ? "만드는 중…" : "생성하기"}
+        </button>
+        {q && <span className="shrink-0 text-[12.5px] text-muted">오늘 남은 무료 생성 {q.remaining}/{q.limit}회</span>}
+      </div>
+      {q && !q.enabled && <p className="mt-2 text-[12.5px] text-alert">지금은 AI 생성을 사용할 수 없습니다.</p>}
+      {q && q.enabled && q.remaining <= 0 && <p className="mt-2 text-[12.5px] text-alert">오늘 무료 생성 횟수를 모두 사용했습니다. 내일 다시 이용할 수 있습니다.</p>}
+      {err && <p role="alert" className="mt-2 text-[12.5px] text-alert">{err}</p>}
+      {busy && <div className="mt-3 grid grid-cols-2 gap-2">{[0, 1].map((i) => <div key={i} className="aspect-[65/45] animate-pulse rounded-[6px] bg-cloud" />)}</div>}
+      {!busy && results.length > 0 && (
+        <>
+          <p className="mt-3 text-[12px] text-muted">마음에 드는 이미지를 누르면 라벨에 들어갑니다.</p>
+          <ul className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {results.map((u) => (
+              <li key={u}>
+                <button type="button" onClick={() => ed.addImage(u, "ai")} className="block w-full overflow-hidden rounded-[6px] border border-line">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt="AI 생성 이미지" className="aspect-[65/45] w-full object-cover" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
+    </div>
+  );
+}
+
+/** 사진 패널 아래: 이전에 만든 AI 이미지 */
+function MyAiImages({ ed }: { ed: EditorApi }) {
+  const [me] = useAiMe();
+  if (!me?.images?.length) return null;
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <h3 className="text-[13px] text-muted">내 AI 이미지</h3>
+      <ul className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
+        {me.images.map((u) => (
+          <li key={u}>
+            <button type="button" onClick={() => ed.addImage(u, "ai")} className="block aspect-square w-full overflow-hidden rounded-[6px] border border-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" className="h-full w-full object-cover" />
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
