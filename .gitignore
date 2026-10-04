@@ -50,3 +50,7 @@ next-env.d.ts
 # 고객 원본 사진 (용량 큼, 필요한 것만 public/images 로 변환해 쓴다)
 /assets/website/
 /assets/products/
+
+# GitHub Pages 미리보기 빌드 산출물
+/.next-pages
+/.pages-out

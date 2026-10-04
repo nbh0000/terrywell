@@ -100,7 +100,21 @@ npm run dev        # http://localhost:3000
 
 ---
 
-## 6. 폴더 구조
+## 6. GitHub Pages 미리보기판
+
+https://nbh0000.github.io/terrywell/ — 공개 페이지와 라벨 에디터를 정적 HTML 로 떠서 올린 **보기 전용** 사이트다.
+로그인·장바구니·결제·디자인 저장·AI 생성은 동작하지 않는다 (서버가 필요).
+
+다시 만들기 (PowerShell):
+
+```powershell
+$env:NEXT_BASE_PATH='/terrywell'; $env:NEXT_DIST_DIR='.next-pages'
+npx next build
+npx next start -p 3200        # 다른 창에서 켜 둔 채로
+python scripts/export_pages.py   # .pages-out/ 생성 → gh-pages 브랜치로 push
+```
+
+## 7. 폴더 구조
 
 ```
 src/app/(site)/        사용자 페이지 (메인, 회사 소개, 제품, 장바구니, 주문, 마이페이지 …)
@@ -116,7 +130,7 @@ public/images/         사이트 이미지 (고객 원본에서 시안 구도로
 assets/                고객 원본 사진 (용량이 커서 git 제외)
 ```
 
-## 7. 이미지 교체
+## 8. 이미지 교체
 
 - 사이트 문구·이미지(메인 히어로, 카드, 배너, 회사 소개, 커스텀 라벨)는 **관리자 → 사이트 설정**에서 바꾼다.
 - 제품 사진·색상별 목업·라벨 부착 위치는 **관리자 → 제품 관리**에서 바꾼다.
