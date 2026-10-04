@@ -3,15 +3,15 @@
 
 /* 테리웰 디자인 토큰 */
 @theme {
-  /* 값은 reference/ 시안에서 뽑았다 */
-  --color-ink: #1f2f36;          /* 제목·본문, 짙은 남색 (CUSTOM LABEL, Better, 버튼) */
+  /* 값은 reference/original 시안(CMYK → sRGB 변환)에서 뽑았다 */
+  --color-ink: #241a18;          /* 제목·본문·버튼 (CUSTOM LABEL, Better, 견적문의 버튼) */
   --color-muted: #6f7679;        /* 보조 글자 */
   --color-line: #d9dcdc;         /* 헤더 아래선 등 */
   --color-paper: #ffffff;        /* 푸터, 카드 */
-  --color-page: #f5f6f6;         /* 페이지 바탕 */
+  --color-page: #f7f7f7;         /* 페이지 바탕 */
   --color-cloud: #eceeee;        /* placeholder */
-  --color-point: #4c77b4;        /* 로고 파랑 */
-  --color-point-dark: #3b62a0;
+  --color-point: #4c78bb;        /* 로고 파랑 */
+  --color-point-dark: #3a63a3;
   --color-alert: #d9443f;        /* 에디터 [편집종료] 전용 */
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;

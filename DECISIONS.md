@@ -16,3 +16,8 @@
 - Docker가 없어 Supabase 로컬 실행 불가 → `NEXT_PUBLIC_SUPABASE_URL` 이 없으면 **로컬 모드**로 동작
   (`.data/db.json` 파일 DB + 개발용 로그인). 키를 넣으면 같은 코드가 Supabase를 사용한다.
 - 레퍼런스 파일명 주의: `02_label-editor.jpg` 의 실제 내용은 제품 상세, `03_product-detail.jpg` 가 에디터.
+
+## 2026-10-04 (2)
+- 사용자가 준 원본 시안(가로 18,533px, CMYK Japan Color 2001)을 `reference/original/` 에 두고, sRGB 로 변환해 이미지·색을 다시 뽑았다.
+  zip 의 `reference/*.jpg`(가로 8,000px)는 색 변환 없이 줄인 것이라 색이 다르다 → 색·이미지는 original 기준.
+- 사이트 색: 글자·버튼 #241a18, 바탕 #f7f7f7, 로고 파랑 #4c78bb.

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: "A Better Everyday, Woven into Every Towel. 커스텀 라벨 수건 테리웰",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f5f6f6" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f7f7f7" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

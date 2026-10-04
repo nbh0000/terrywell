@@ -43,3 +43,6 @@ next-env.d.ts
 
 # 로컬 모드 데이터 (파일 DB, 세션 키, 관리자 계정)
 /.data
+
+# 원본 시안 (용량이 커서 저장소에 넣지 않음)
+/reference/original/
