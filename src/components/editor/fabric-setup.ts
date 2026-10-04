@@ -32,7 +32,9 @@ export async function renderPage(page: unknown, label: LabelSpec, opts: { width:
   const { w, h } = workSize(label);
   const el = document.createElement("canvas");
   const sc = new StaticCanvas(el, { width: w * K, height: h * K, enableRetinaScaling: false });
-  await sc.loadFromJSON(page as object);
+  // 비어 있는 사진틀(자리표시)은 결과물에 넣지 않는다
+  const json = page as { objects?: { tw?: TwMeta }[] };
+  await sc.loadFromJSON({ ...json, objects: (json.objects ?? []).filter((o) => o.tw?.kind !== "frame") });
   sc.renderAll();
   let url: string;
   if (opts.area === "trim") {

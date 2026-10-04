@@ -48,7 +48,12 @@ export async function saveDesignAction(input: {
   // 300dpi 정보를 넣은 PNG
   const printPng = await sharp(png).withMetadata({ density: 300 }).png().toBuffer();
   // CMYK 변환본 (인쇄소 전달용 TIFF)
-  const cmyk = await sharp(png).flatten({ background: "#ffffff" }).toColourspace("cmyk").withMetadata({ density: 300 }).tiff({ compression: "lzw" }).toBuffer();
+  // withMetadata 를 쓰면 sRGB 로 되돌아가므로 CMYK ICC 프로필로 변환하고 해상도는 tiff 옵션(px/mm)으로 넣는다
+  const cmyk = await sharp(png)
+    .flatten({ background: "#ffffff" })
+    .withIccProfile("cmyk")
+    .tiff({ compression: "lzw", xres: 300 / 25.4, yres: 300 / 25.4, resolutionUnit: "inch" })
+    .toBuffer();
   // PDF: 작업 사이즈(mm) 그대로
   const { w, h } = workSize(input.doc.label);
   const pdf = await PDFDocument.create();
