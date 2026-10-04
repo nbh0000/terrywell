@@ -70,7 +70,8 @@ export function buildSeed() {
   ];
   const P = "/images/products/lollipop";
   // 목업(정면샷) 위 라벨 위치. label_x/y = 라벨 중심(목업 대비 %), label_w = 라벨 가로(긴 변) 길이(목업 폭 대비 %)
-  // 정면샷에서 실측: 오른쪽 위, 시계방향 90도 회전
+  // 색상별 정면샷에서 원래 라벨 위치를 실측하고, 원래 라벨이 비치지 않게 12% 크게 덮는다. 시계방향 90도 회전
+  const LABEL_POS: Record<string, { x: number; y: number; w: number }> = {"peach": {"x": 90.33, "y": 19.58, "w": 9.33}, "soda": {"x": 90.1, "y": 19.59, "w": 9.48}, "lemon": {"x": 90.83, "y": 19.26, "w": 8.74}, "melon": {"x": 91.33, "y": 16.77, "w": 8.63}, "berry": {"x": 90.83, "y": 18.39, "w": 8.74}};
   const product_colors: Tables["product_colors"][] = colors.map(([name, swatch], i) => ({
     id: randomUUID(),
     product_id: productId,
@@ -81,9 +82,9 @@ export function buildSeed() {
       { url: `${P}/stack-${name}.jpg`, alt: `${name} 5장` },
     ],
     mockup_url: `${P}/front-${name}.jpg`,
-    label_x: 90.86,
-    label_y: 19.6,
-    label_w: 8.1, // 실측 7.78% — 원래 라벨 가장자리가 비치지 않게 조금 크게
+    label_x: LABEL_POS[name].x,
+    label_y: LABEL_POS[name].y,
+    label_w: LABEL_POS[name].w,
     label_rotate: 90,
     sort_order: i,
   }));
