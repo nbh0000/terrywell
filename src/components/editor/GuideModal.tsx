@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { GUIDE } from "./constants";
 
-// 레퍼런스(03) "편집 가이드" 모달. 유의사항 문구는 7단계 관리자 "사이트 설정"에서 수정하게 된다.
-export function GuideModal({ onClose }: { onClose: () => void }) {
+// 레퍼런스(03) "편집 가이드" 모달. 유의사항 문구는 관리자 "사이트 설정"에서 수정한다.
+export function GuideModal({ onClose, notes }: { onClose: () => void; notes: { title: string; body: string }[] }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -36,14 +36,12 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
           <p className="text-[15px] font-semibold">이미지와 PDF 파일 편집이 가능합니다!</p>
           <span className="mt-3 inline-block rounded-full bg-alert px-3 py-1 text-[12px] font-medium text-white">유의 사항</span>
           <ol className="mt-3 space-y-3 text-[13px] leading-relaxed">
-            <li>
-              <p className="font-medium text-alert">① PDF 후가공 레이어 주문X</p>
-              <p className="text-muted">PDF 파일에 후가공 레이어가 포함되어 있더라도 후가공 레이어는 무시됩니다.</p>
-            </li>
-            <li>
-              <p className="font-medium text-alert">② 화이트 인쇄 &gt; 자동화이트</p>
-              <p className="text-muted">화이트 인쇄 옵션 선택 시 업로드하신 이미지 영역에 맞춰 자동으로 화이트 인쇄가 적용됩니다. 화이트 인쇄 레이어가 포함된 PDF 파일을 업로드하더라도, 화이트 레이어는 무시됩니다.</p>
-            </li>
+            {notes.map((n, i) => (
+              <li key={i}>
+                <p className="font-medium text-alert">{"①②③④⑤⑥⑦⑧⑨"[i] ?? `${i + 1}.`} {n.title}</p>
+                <p className="text-muted">{n.body}</p>
+              </li>
+            ))}
           </ol>
         </div>
         <button type="button" onClick={onClose} className="mt-6 h-11 w-full rounded-[6px] bg-ink text-[15px] text-white">확인</button>

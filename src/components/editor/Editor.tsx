@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { fmtMm, workSize, type DesignDoc, type LabelSpec, type MockupSpec } from "@/lib/editor/types";
 import { addDesignToCartAction, saveDesignAction } from "@/app/editor/[slug]/actions";
+import { saveTemplateAction } from "@/app/admin/templates/actions";
 import { GUIDE, type ToolKey } from "./constants";
 import { renderPage, renderPrintPng } from "./fabric-setup";
 import { useLabelCanvas } from "./useLabelCanvas";
@@ -76,12 +77,17 @@ export function Editor(props: {
   stickers: EditorSticker[];
   loggedIn: boolean;
   design: { id: string; name: string; doc: unknown; colorId: string | null } | null;
+  templateMode?: { id: string | null; name: string; category: string } | null;
+  guideNotes: { title: string; body: string }[];
 }) {
   const { product, label, colors } = props;
   const router = useRouter();
-  const storageKey = `tw-editor:${product.id}:${props.design?.id ?? "new"}`;
+  const tpl = props.templateMode ?? null;
+  const storageKey = tpl ? `tw-editor:tpl:${tpl.id ?? "new"}` : `tw-editor:${product.id}:${props.design?.id ?? "new"}`;
+  const [tplName, setTplName] = useState(tpl?.name ?? "");
+  const [tplCategory, setTplCategory] = useState(tpl?.category ?? "기본");
   const [colorId, setColorId] = useState(props.initialColorId);
-  const [designId, setDesignId] = useState(props.design?.id ?? null);
+  const [designId, setDesignId] = useState(props.design?.id || null);
   const [tool, setTool] = useState<ToolKey | null>(null);
   const [ctx, setCtx] = useState<CtxKey | null>(null);
   const [modal, setModal] = useState<Modal>(null);
@@ -254,6 +260,23 @@ export function Editor(props: {
     }
   }
 
+  async function saveTemplate() {
+    if (!tplName.trim()) return setError("템플릿 이름을 입력해 주세요.");
+    setModal("saving");
+    setError(null);
+    ed.canvasRef.current?.discardActiveObject();
+    const r = await saveTemplateAction({ id: tpl?.id ?? undefined, name: tplName, category: tplCategory, productId: product.id, doc: ed.getDoc() });
+    if (!r.ok) {
+      setError(r.error ?? "저장하지 못했습니다.");
+      return setModal("exit");
+    }
+    dirtyRef.current = false;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+    router.push("/admin/templates");
+  }
+
   async function afterSave(action: "cart" | "buy" | "product") {
     if (action === "product") return router.push(`/products/${product.slug}?design=${designId ?? ""}${colorId ? `&color=${colorId}` : ""}`);
     if (!designId) return;
@@ -267,7 +290,7 @@ export function Editor(props: {
       localStorage.removeItem(storageKey);
     } catch {}
     dirtyRef.current = false;
-    router.push(`/products/${product.slug}`);
+    router.push(tpl ? "/admin/templates" : `/products/${product.slug}`);
   }
 
   async function restore(yes: boolean) {
@@ -295,7 +318,7 @@ export function Editor(props: {
     <div className="fixed inset-0 flex flex-col bg-[#eeeeee] text-ink">
       {/* 상단 바 */}
       <header className="flex h-[52px] shrink-0 items-center gap-2 bg-[#040301] px-3 text-white sm:px-4">
-        <h1 className="min-w-0 flex-1 truncate text-[14px] sm:text-[15px]">{product.nameKo} · 라벨</h1>
+        <h1 className="min-w-0 flex-1 truncate text-[14px] sm:text-[15px]">{tpl ? "템플릿 · " : ""}{product.nameKo} · 라벨</h1>
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <button type="button" onClick={() => void ed.undo()} disabled={!ed.history.undo} aria-label="실행취소" className="p-2 disabled:opacity-30">
             <Undo2 size={20} />
@@ -427,6 +450,7 @@ export function Editor(props: {
       {/* 모달 */}
       {modal === "guide" && (
         <GuideModal
+          notes={props.guideNotes}
           onClose={() => {
             try {
               localStorage.setItem("tw-editor-guide-seen", "1");
@@ -444,7 +468,21 @@ export function Editor(props: {
           </div>
         </Dialog>
       )}
-      {modal === "exit" && (
+      {modal === "exit" && tpl && (
+        <Dialog title="템플릿으로 저장" onClose={() => setModal(null)}>
+          {error && <p role="alert" className="mb-3 text-[13px] text-alert">{error}</p>}
+          <div className="space-y-2">
+            <input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="템플릿 이름" className="h-11 w-full rounded-[6px] border border-line px-3 text-[14px]" aria-label="템플릿 이름" />
+            <input value={tplCategory} onChange={(e) => setTplCategory(e.target.value)} placeholder="분류 (예: 이름, 로고)" className="h-11 w-full rounded-[6px] border border-line px-3 text-[14px]" aria-label="분류" />
+          </div>
+          <div className="mt-4 flex flex-col gap-2">
+            <button type="button" className="h-12 rounded-[6px] bg-ink text-[15px] text-white" onClick={saveTemplate}>템플릿으로 저장</button>
+            <button type="button" className="h-12 rounded-[6px] border border-line text-[15px]" onClick={() => setModal(null)}>돌아가기</button>
+            <button type="button" className="h-11 text-[13px] text-muted underline" onClick={exitWithoutSave}>저장 안 하고 종료</button>
+          </div>
+        </Dialog>
+      )}
+      {modal === "exit" && !tpl && (
         <Dialog title="편집을 종료할까요?" onClose={() => setModal(null)}>
           {!props.loggedIn && <p className="mb-3 text-[13px] text-muted">저장하려면 로그인이 필요합니다. 로그인 후 지금 작업을 이어서 저장할 수 있습니다.</p>}
           {error && <p role="alert" className="mb-3 text-[13px] text-alert">{error}</p>}

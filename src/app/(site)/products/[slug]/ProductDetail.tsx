@@ -34,6 +34,7 @@ interface Props {
   initialColorId: string | null;
   tiers: Tier[];
   files: { guide: string | null; template: string | null };
+  consent: string[];
   loggedIn: boolean;
   wished: boolean;
   design: { id: string; thumbnail: string | null; colorId: string | null } | null;
@@ -224,7 +225,7 @@ export function ProductDetail(p: Props) {
                 )}
               </div>
             ) : (
-              <UploadBox productId={product.id} files={p.files} loggedIn={p.loggedIn} loginUrl={loginUrl} upload={upload} setUpload={setUpload} />
+              <UploadBox productId={product.id} files={p.files} consent={p.consent} loggedIn={p.loggedIn} loginUrl={loginUrl} upload={upload} setUpload={setUpload} />
             )}
           </div>
 
@@ -351,6 +352,7 @@ function ModeButton({ active, onClick, Icon, children }: { active: boolean; onCl
 function UploadBox({
   productId,
   files,
+  consent,
   loggedIn,
   loginUrl,
   upload,
@@ -358,6 +360,7 @@ function UploadBox({
 }: {
   productId: string;
   files: { guide: string | null; template: string | null };
+  consent: string[];
   loggedIn: boolean;
   loginUrl: string;
   upload: { id: string; fileName: string; fileSize: number } | null;
@@ -404,8 +407,8 @@ function UploadBox({
   return (
     <div className="mt-4 space-y-3">
       <p className="flex items-center gap-1.5 text-[14px] font-medium"><FileText size={16} /> 파일 접수를 위해 아래 항목에 모두 동의해주세요</p>
-      {agreeRow(a1, setA1, <><span className="text-alert">제작 가이드</span>에 명시된 색상, 레이어의 이름 및 순서, 대지 사이즈 등을 반드시 지켜주세요.</>)}
-      {agreeRow(a2, setA2, <>제작 가이드를 준수하지 않은 파일로 인해 발생한 모든 문제에 대해 <span className="text-alert">테리웰의 책임이 없음을 확인</span>합니다.</>)}
+      {agreeRow(a1, setA1, consent[0])}
+      {agreeRow(a2, setA2, consent[1])}
       <div className="flex gap-2">
         <FileLink href={files.guide} Icon={BookOpen}>제작가이드</FileLink>
         <FileLink href={files.template} Icon={FileDown}>도안 파일</FileLink>

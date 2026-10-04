@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { getContent } from "@/lib/site";
 import { ProductDetail } from "./ProductDetail";
 
 export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
@@ -18,11 +19,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const product = await db.get("products", { slug, is_visible: true });
   if (!product) notFound();
 
-  const [colors, tiers, files, user] = await Promise.all([
+  const [colors, tiers, files, user, consent] = await Promise.all([
     db.select("product_colors", { where: { product_id: product.id }, order: [{ column: "sort_order" }] }),
     db.select("product_price_tiers", { where: { product_id: product.id }, order: [{ column: "min_qty" }] }),
     db.select("product_files", { where: { product_id: product.id } }),
     getCurrentUser(),
+    getContent("pdfConsent"),
   ]);
 
   let wished = false;
@@ -69,6 +71,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
         guide: files.find((f) => f.kind === "guide")?.url ?? null,
         template: files.find((f) => f.kind === "template")?.url ?? null,
       }}
+      consent={consent.items}
       loggedIn={!!user}
       wished={wished}
       design={design}

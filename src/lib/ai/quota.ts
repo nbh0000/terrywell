@@ -13,3 +13,8 @@ export async function getQuota(userId: string) {
   const used = await getDb({ admin: true }).count("ai_generations", { user_id: userId, kst_date: kstDate(), success: true });
   return { enabled: ai.enabled, limit: ai.daily_free_limit, used, remaining: Math.max(0, ai.daily_free_limit - used), styles: ai.styles };
 }
+
+/** n 일 전 한국시간 날짜 */
+export function kstDaysAgo(n: number) {
+  return kstDate(new Date(Date.now() - n * 86400_000));
+}
