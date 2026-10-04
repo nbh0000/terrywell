@@ -36,6 +36,7 @@ export const DEFAULT_SETTINGS = {
     hours_weekday: "월-금 10:00 - 17:00",
     hours_lunch: "점심시간 11:30-13:00",
   } satisfies CompanyInfo,
+  shipping: { fee: 3000, free_over: 0 }, // free_over 0 = 무료배송 기준 없음
   ai: { enabled: true, daily_free_limit: 10, styles: ["일러스트", "미니멀", "수채화", "로고형", "패턴"] },
 };
 

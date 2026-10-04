@@ -29,22 +29,24 @@ export function buildSeed() {
       specs: [
         { label: "소재", value: "40수 (그라운드 - 코튼 100% / 스트라이프 - 면 50% 극세사 25% 대나무 25%)" },
         { label: "중량", value: "200g" },
-        { label: "사이즈", value: "수건 - 40×80cm / 라벨 - 6.5×4.5cm" },
+        { label: "사이즈", value: "수건 - 40×80cm / 라벨 - 4.5 × 6.5cm" },
         { label: "원산지", value: "대한민국" },
       ],
       spec_note: "* 수건 박스 별도 문의",
       towel_size: "40×80cm",
       detail_html: "",
-      detail_images: [],
-      notice_html: "",
-      guide_html: "",
+      detail_images: [1, 2, 3, 4].map((i) => ({ url: `/images/products/lollipop/detail-${i}.jpg`, alt: "롤리팝 스트라이프 타월" })),
+      notice_html:
+        "<ul><li>모니터 환경에 따라 실제 원단 색상과 차이가 있을 수 있습니다.</li><li>라벨 디자인은 재단선 안쪽 안전 영역 안에 중요한 글자와 이미지를 넣어 주세요.</li><li>PDF 업로드 주문은 제작 가이드의 대지 사이즈를 지켜 주세요.</li></ul>",
+      guide_html:
+        "<ol><li>색상을 고르고 디자인 방식(에디터 편집 또는 PDF 업로드)을 선택합니다.</li><li>에디터에서 라벨을 디자인하고 저장하거나, PDF 파일을 올립니다.</li><li>수량을 정하고 장바구니에 담거나 바로 구매합니다.</li><li>결제가 끝나면 마이페이지에서 주문 상태를 확인할 수 있습니다.</li></ol>",
       shipping_info: [
         { label: "배송방법", value: "택배" },
         { label: "배송지역", value: "전국" },
-        { label: "배송비", value: "3,000원 (50,000원 이상 무료)" },
+        { label: "배송비용", value: "기본 택배비 3,000원\n도서산간 지역은 추가 금액이 청구됩니다." },
       ],
       base_price: 9000,
-      vat_included: false,
+      vat_included: true, // 표시 가격 = 부가세 포함 (시안: 총액 9,200 = 공급가 8,364 + 부가세 836)
       allow_editor: true,
       allow_upload: true,
       label_width_mm: 65,
@@ -75,8 +77,8 @@ export function buildSeed() {
     name,
     swatch,
     images: [
+      { url: `${P}/front-v-${name}.jpg`, alt: `${name} 정면` },
       { url: `${P}/stack-${name}.jpg`, alt: `${name} 5장` },
-      { url: `${P}/front-${name}.jpg`, alt: `${name} 정면` },
     ],
     mockup_url: `${P}/front-${name}.jpg`,
     label_x: 90.86,

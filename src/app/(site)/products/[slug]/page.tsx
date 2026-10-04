@@ -1,22 +1,77 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { ProductDetail } from "./ProductDetail";
 
-// 제품 상세는 5단계에서 시안(reference/02)대로 만든다. 지금은 에디터로 들어가는 길만 둔다.
-export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
+export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getDb().get("products", { slug, is_visible: true });
+  const p = await getDb().get("products", { slug, is_visible: true });
+  return { title: p ? p.name_ko : "제품" };
+}
+
+// reference/02 "제품 선택했을 때 나오는 창" 시안
+export default async function ProductPage({ params, searchParams }: PageProps<"/products/[slug]">) {
+  const { slug } = await params;
+  const sp = await searchParams;
+  const db = getDb();
+  const product = await db.get("products", { slug, is_visible: true });
   if (!product) notFound();
+
+  const [colors, tiers, files, user] = await Promise.all([
+    db.select("product_colors", { where: { product_id: product.id }, order: [{ column: "sort_order" }] }),
+    db.select("product_price_tiers", { where: { product_id: product.id }, order: [{ column: "min_qty" }] }),
+    db.select("product_files", { where: { product_id: product.id } }),
+    getCurrentUser(),
+  ]);
+
+  let wished = false;
+  let design: { id: string; thumbnail: string | null; colorId: string | null } | null = null;
+  if (user) {
+    wished = !!(await db.get("wishlists", { user_id: user.id, product_id: product.id }));
+    // 에디터에서 막 저장하고 돌아온 디자인, 없으면 이 제품의 가장 최근 디자인
+    const wanted = typeof sp.design === "string" ? await db.get("designs", { id: sp.design }) : null;
+    const d =
+      wanted && wanted.user_id === user.id && wanted.product_id === product.id
+        ? wanted
+        : (await db.select("designs", { where: { user_id: user.id, product_id: product.id }, order: [{ column: "updated_at", ascending: false }], limit: 1 }))[0];
+    if (d) design = { id: d.id, thumbnail: d.thumbnail_url, colorId: d.color_id };
+  }
+
+  const colorParam = typeof sp.color === "string" ? sp.color : null;
   return (
-    <section className="mx-auto w-full max-w-[1280px] px-5 py-20 md:px-8">
-      <h1 className="font-display text-2xl font-medium">{product.name_en}</h1>
-      <p className="mt-1 text-lg">{product.name_ko}</p>
-      <p className="mt-3 text-sm text-muted">제품 상세 화면은 작업 순서 5단계에서 만듭니다.</p>
-      {product.allow_editor && (
-        <Link href={`/editor/${product.slug}`} className="mt-8 inline-flex h-12 items-center bg-point px-8 text-white hover:bg-point-dark">
-          디자인하기
-        </Link>
-      )}
-    </section>
+    <ProductDetail
+      product={{
+        id: product.id,
+        slug: product.slug,
+        nameEn: product.name_en,
+        nameKo: product.name_ko,
+        images: product.images,
+        specs: product.specs,
+        specNote: product.spec_note,
+        towelSize: product.towel_size,
+        labelW: Number(product.label_width_mm),
+        labelH: Number(product.label_height_mm),
+        shipping: product.shipping_info,
+        basePrice: product.base_price,
+        vatIncluded: product.vat_included,
+        allowEditor: product.allow_editor,
+        allowUpload: product.allow_upload,
+        detailHtml: product.detail_html,
+        detailImages: product.detail_images,
+        noticeHtml: product.notice_html,
+        guideHtml: product.guide_html,
+      }}
+      colors={colors.map((c) => ({ id: c.id, name: c.name, swatch: c.swatch, images: c.images }))}
+      initialColorId={(colorParam && colors.some((c) => c.id === colorParam) ? colorParam : null) ?? design?.colorId ?? colors[0]?.id ?? null}
+      tiers={tiers.map((t) => ({ min_qty: t.min_qty, unit_price: t.unit_price }))}
+      files={{
+        guide: files.find((f) => f.kind === "guide")?.url ?? null,
+        template: files.find((f) => f.kind === "template")?.url ?? null,
+      }}
+      loggedIn={!!user}
+      wished={wished}
+      design={design}
+    />
   );
 }

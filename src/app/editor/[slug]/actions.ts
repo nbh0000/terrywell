@@ -88,22 +88,24 @@ export async function saveDesignAction(input: {
   return { ok: true, designId };
 }
 
-export async function addDesignToCartAction(designId: string, quantity = 1): Promise<{ ok: boolean; error?: string }> {
+export async function addDesignToCartAction(designId: string, quantity = 1): Promise<{ ok: boolean; error?: string; cartItemId?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const db = getDb();
   const design = await db.get("designs", { id: designId });
   if (!design || design.user_id !== user.id) return { ok: false, error: "디자인을 찾을 수 없습니다." };
   const existing = await db.get("cart_items", { user_id: user.id, design_id: designId });
-  if (existing) await db.update("cart_items", { id: existing.id }, { quantity: existing.quantity + quantity });
-  else
-    await db.insert("cart_items", {
-      user_id: user.id,
-      product_id: design.product_id,
-      color_id: design.color_id,
-      design_id: designId,
-      upload_id: null,
-      quantity,
-    });
-  return { ok: true };
+  if (existing) {
+    await db.update("cart_items", { id: existing.id }, { quantity: existing.quantity + quantity });
+    return { ok: true, cartItemId: existing.id };
+  }
+  const row = await db.insert("cart_items", {
+    user_id: user.id,
+    product_id: design.product_id,
+    color_id: design.color_id,
+    design_id: designId,
+    upload_id: null,
+    quantity,
+  });
+  return { ok: true, cartItemId: row.id };
 }

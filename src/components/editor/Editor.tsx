@@ -255,11 +255,11 @@ export function Editor(props: {
   }
 
   async function afterSave(action: "cart" | "buy" | "product") {
-    if (action === "product") return router.push(`/products/${product.slug}`);
+    if (action === "product") return router.push(`/products/${product.slug}?design=${designId ?? ""}${colorId ? `&color=${colorId}` : ""}`);
     if (!designId) return;
     const r = await addDesignToCartAction(designId);
     if (!r.ok) return setError(r.error ?? "장바구니에 담지 못했습니다.");
-    router.push(action === "buy" ? "/cart?checkout=1" : "/cart");
+    router.push(action === "buy" ? `/checkout?items=${r.cartItemId}` : "/cart");
   }
 
   function exitWithoutSave() {

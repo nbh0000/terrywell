@@ -40,3 +40,12 @@ body {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
 }
+
+/* 관리자가 입력한 본문(HTML) */
+.prose-tw { font-size: 14.5px; line-height: 1.8; color: var(--color-ink); }
+.prose-tw p { margin: 0.4em 0; }
+.prose-tw ul { list-style: disc; padding-left: 1.3em; }
+.prose-tw ol { list-style: decimal; padding-left: 1.3em; }
+.prose-tw li { margin: 0.25em 0; }
+.prose-tw img { max-width: 100%; height: auto; }
+.prose-tw a { text-decoration: underline; }
