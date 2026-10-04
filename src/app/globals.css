@@ -35,3 +35,8 @@ body {
   outline: 2px solid var(--color-point);
   outline-offset: 2px;
 }
+
+@keyframes tw-load {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

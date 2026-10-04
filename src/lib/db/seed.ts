@@ -67,7 +67,8 @@ export function buildSeed() {
     ["berry", "#c8b1d9"],
   ];
   const P = "/images/products/lollipop";
-  // 목업(정면샷) 위 라벨 위치: 오른쪽 위 세로 라벨 자리 (이미지 대비 %, 3단계 에디터 미리보기용)
+  // 목업(정면샷) 위 라벨 위치. label_x/y = 라벨 중심(목업 대비 %), label_w = 라벨 가로(긴 변) 길이(목업 폭 대비 %)
+  // 정면샷에서 실측: 오른쪽 위, 시계방향 90도 회전
   const product_colors: Tables["product_colors"][] = colors.map(([name, swatch], i) => ({
     id: randomUUID(),
     product_id: productId,
@@ -78,9 +79,9 @@ export function buildSeed() {
       { url: `${P}/front-${name}.jpg`, alt: `${name} 정면` },
     ],
     mockup_url: `${P}/front-${name}.jpg`,
-    label_x: 91.6,
-    label_y: 15.5,
-    label_w: 4.2,
+    label_x: 90.86,
+    label_y: 19.6,
+    label_w: 8.1, // 실측 7.78% — 원래 라벨 가장자리가 비치지 않게 조금 크게
     label_rotate: 90,
     sort_order: i,
   }));
@@ -96,6 +97,37 @@ export function buildSeed() {
     { id: randomUUID(), title: "공지사항 예시", body_html: "<p>관리자 페이지에서 공지사항을 작성하면 여기에 표시됩니다.</p>", is_pinned: false, created_at: now, updated_at: now },
   ];
 
+  // 에디터 디자인 템플릿 (작업 사이즈 69×49mm, 1mm = 10 단위, 객체 기준점은 가운데)
+  const label = { widthMm: 65, heightMm: 45, bleedMm: 2, safeMm: 3, cornerMm: 0, pages: 1, allowPages: false };
+  const text = (t: string, o: Record<string, unknown>) => ({ type: "Textbox", originX: "center", originY: "center", text: t, textAlign: "center", fill: "#221817", width: 560, splitByGrapheme: true, tw: { kind: "text" }, ...o });
+  const doc = (background: string, objects: object[]) => ({ v: 1, unit: "mm", k: 10, label, pages: [{ version: "7.4.0", background, objects }] });
+  const tpl = (name: string, category: string, d: object, sort: number): Tables["templates"] => ({
+    id: randomUUID(), name, category, product_id: null, canvas_json: d, thumbnail_url: null, is_visible: true, sort_order: sort, created_at: now,
+  });
+  const templates: Tables["templates"][] = [
+    tpl("이름 라벨", "이름", doc("#ffffff", [
+      { type: "Rect", originX: "center", originY: "center", left: 345, top: 245, width: 590, height: 390, fill: "", stroke: "#221817", strokeWidth: 4 },
+      text("이름", { left: 345, top: 245, fontSize: 120, fontFamily: "Noto Serif KR", fontWeight: "bold" }),
+    ]), 1),
+    tpl("브랜드 로고형", "로고", doc("#1c2c77", [
+      text("BRAND", { left: 345, top: 225, fontSize: 120, fontFamily: "Playfair Display", fontWeight: "bold", fill: "#ffffff", charSpacing: 120 }),
+      text("EST. 2026", { left: 345, top: 330, fontSize: 36, fontFamily: "Poppins", fill: "#ffffff", charSpacing: 300 }),
+    ]), 2),
+    tpl("스트라이프", "패턴", doc("#f9f6c9", [
+      ...[120, 300, 480, 660].map((x) => ({ type: "Rect", originX: "center", originY: "center", left: x, top: 245, width: 70, height: 900, angle: 35, fill: "#c8b1d9" })),
+      { type: "Rect", originX: "center", originY: "center", left: 345, top: 245, width: 420, height: 150, fill: "#ffffff" },
+      text("TEXT", { left: 345, top: 245, fontSize: 90, fontFamily: "Poppins", fontWeight: "600", width: 400 }),
+    ]), 3),
+    tpl("심플 원형", "심플", doc("#ffffff", [
+      { type: "Circle", originX: "center", originY: "center", left: 345, top: 245, radius: 170, fill: "#e8bdc6" },
+      text("Hello", { left: 345, top: 245, fontSize: 110, fontFamily: "Gaegu", fontWeight: "bold", width: 400 }),
+    ]), 4),
+  ];
+
+  const stickers: Tables["stickers"][] = ["heart", "star", "flower", "leaf", "smile", "cloud", "sun", "sparkle", "lemon", "stripe-ribbon"].map((n, i) => ({
+    id: randomUUID(), name: n, category: "아이콘", url: `/stickers/${n}.svg`, sort_order: i, created_at: now,
+  }));
+
   return {
     profiles: [],
     categories,
@@ -103,8 +135,8 @@ export function buildSeed() {
     product_colors,
     product_price_tiers,
     product_files: [],
-    templates: [],
-    stickers: [],
+    templates,
+    stickers,
     designs: [],
     design_uploads: [],
     wishlists: [],
