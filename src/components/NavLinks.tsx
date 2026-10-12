@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // 시안처럼 지금 있는 메뉴는 옅은 회색으로 표시
-export function NavLinks({ nav }: { nav: { href: string; label: string }[] }) {
+export function NavLinks({ nav }: { nav: { href: string; label: string; also?: string[] }[] }) {
   const pathname = usePathname();
   return (
     <nav className="ml-12 flex gap-9 text-[16px] tracking-[0.04em]">
       {nav.map((n) => {
-        const active = pathname === n.href || pathname.startsWith(n.href + "/");
+        const active = [n.href, ...(n.also ?? [])].some((h) => pathname === h || pathname.startsWith(h + "/"));
         return (
           <Link
             key={n.href}

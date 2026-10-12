@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { normalizeQty } from "@/lib/pricing";
 import { putFile, removeFiles } from "@/lib/storage";
 
 const MAX_UPLOAD = 50 * 1024 * 1024;
@@ -78,10 +79,11 @@ export async function addToCartAction(input: {
 }): Promise<{ ok: boolean; error?: string; needLogin?: boolean; cartItemId?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, needLogin: true, error: "로그인이 필요합니다." };
-  const qty = Math.floor(Number(input.quantity));
-  if (!(qty >= 1 && qty <= 100000)) return { ok: false, error: "수량을 확인해 주세요." };
+  if (!(Number(input.quantity) >= 1 && Number(input.quantity) <= 100000)) return { ok: false, error: "수량을 확인해 주세요." };
   const db = getDb();
-  if (!(await db.get("products", { id: input.productId }))) return { ok: false, error: "제품을 찾을 수 없습니다." };
+  const product = await db.get("products", { id: input.productId });
+  if (!product) return { ok: false, error: "제품을 찾을 수 없습니다." };
+  const qty = normalizeQty(input.quantity, product.qty_step);
   if (input.designId) {
     const d = await db.get("designs", { id: input.designId });
     if (!d || d.user_id !== user.id) return { ok: false, error: "디자인을 찾을 수 없습니다." };

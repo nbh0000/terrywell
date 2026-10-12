@@ -7,6 +7,7 @@ const TABS = [
   { href: "/mypage", label: "주문 내역" },
   { href: "/mypage/designs", label: "저장한 디자인" },
   { href: "/mypage/wishlist", label: "찜 목록" },
+  { href: "/mypage/inquiries", label: "1:1 문의" },
   { href: "/mypage/profile", label: "회원정보" },
 ];
 

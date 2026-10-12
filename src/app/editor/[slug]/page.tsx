@@ -17,12 +17,13 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
   const product = await db.get("products", { slug, is_visible: true });
   if (!product || !product.allow_editor) notFound();
 
-  const [colors, templates, stickers, user, guide] = await Promise.all([
+  const [colors, templates, stickers, user, guide, mix] = await Promise.all([
     db.select("product_colors", { where: { product_id: product.id }, order: [{ column: "sort_order" }] }),
     db.select("templates", { where: { is_visible: true }, order: [{ column: "sort_order" }] }),
     db.select("stickers", { order: [{ column: "sort_order" }] }),
     getCurrentUser(),
     getContent("editorGuide"),
+    getContent("mixNotice"),
   ]);
 
   // 기존 디자인 불러오기 (본인 것만)
@@ -60,6 +61,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
         id: c.id,
         name: c.name,
         swatch: c.swatch,
+        isMix: !!c.is_mix,
         mockup: { url: c.mockup_url, x: Number(c.label_x), y: Number(c.label_y), w: Number(c.label_w), rotate: Number(c.label_rotate) },
       }))}
       initialColorId={colorId}
@@ -69,6 +71,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
       design={design}
       templateMode={templateMode}
       guideNotes={guide.notes}
+      mixNotice={mix.lines}
     />
   );
 }

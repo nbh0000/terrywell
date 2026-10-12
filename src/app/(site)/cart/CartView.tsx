@@ -59,7 +59,7 @@ export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFe
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div className="flex h-10 items-center border border-line bg-white">
-                    <button type="button" className="grid h-full w-9 place-items-center text-muted" disabled={l.quantity <= 1 || pending} onClick={() => setQty(l.id, l.quantity - 1)} aria-label="수량 줄이기"><Minus size={15} /></button>
+                    <button type="button" className="grid h-full w-9 place-items-center text-muted" disabled={l.quantity <= l.qtyStep || pending} onClick={() => setQty(l.id, l.quantity - l.qtyStep)} aria-label="수량 줄이기"><Minus size={15} /></button>
                     <input
                       key={l.quantity}
                       defaultValue={l.quantity}
@@ -67,11 +67,12 @@ export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFe
                       onBlur={(e) => {
                         const q = Number(e.target.value.replace(/\D/g, ""));
                         if (q >= 1 && q !== l.quantity) setQty(l.id, q);
+                        else e.target.value = String(l.quantity);
                       }}
                       className="h-full w-14 text-center text-[14px] outline-none"
-                      aria-label="수량"
+                      aria-label={l.qtyStep > 1 ? `수량 (${l.qtyStep}개 단위)` : "수량"}
                     />
-                    <button type="button" className="grid h-full w-9 place-items-center" disabled={pending} onClick={() => setQty(l.id, l.quantity + 1)} aria-label="수량 늘리기"><Plus size={15} /></button>
+                    <button type="button" className="grid h-full w-9 place-items-center" disabled={pending} onClick={() => setQty(l.id, l.quantity + l.qtyStep)} aria-label="수량 늘리기"><Plus size={15} /></button>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">{won(l.total)}</p>

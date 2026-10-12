@@ -5,6 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { normalizeQty } from "@/lib/pricing";
 import type { DesignDoc } from "@/lib/editor/types";
 import { workSize } from "@/lib/editor/types";
 import { dataUrlToBuffer, putFile } from "@/lib/storage";
@@ -88,15 +89,18 @@ export async function saveDesignAction(input: {
   return { ok: true, designId };
 }
 
-export async function addDesignToCartAction(designId: string, quantity = 1): Promise<{ ok: boolean; error?: string; cartItemId?: string }> {
+export async function addDesignToCartAction(designId: string): Promise<{ ok: boolean; error?: string; cartItemId?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const db = getDb();
   const design = await db.get("designs", { id: designId });
   if (!design || design.user_id !== user.id) return { ok: false, error: "디자인을 찾을 수 없습니다." };
+  // 처음 담을 때는 최소 수량(수량 단위 1개)
+  const product = await db.get("products", { id: design.product_id });
+  const quantity = normalizeQty(1, product?.qty_step);
   const existing = await db.get("cart_items", { user_id: user.id, design_id: designId });
   if (existing) {
-    await db.update("cart_items", { id: existing.id }, { quantity: existing.quantity + quantity });
+    await db.update("cart_items", { id: existing.id }, { quantity: normalizeQty(existing.quantity + quantity, product?.qty_step) });
     return { ok: true, cartItemId: existing.id };
   }
   const row = await db.insert("cart_items", {

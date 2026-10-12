@@ -26,4 +26,11 @@ export function shippingFee(itemsTotal: number, s: { fee: number; free_over: num
   return s.free_over > 0 && itemsTotal >= s.free_over ? 0 : s.fee;
 }
 
+/** 수량을 제품 수량 단위(예: 5P 세트면 5)의 배수로 맞춘다. 최소 수량도 단위 1개 */
+export function normalizeQty(qty: number, step = 1) {
+  const s = Math.max(1, Math.floor(step) || 1);
+  const q = Math.floor(Number(qty)) || 0;
+  return Math.min(100000, Math.max(s, Math.ceil(q / s) * s));
+}
+
 export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;

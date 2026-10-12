@@ -34,7 +34,9 @@ export interface ProductPayload {
   label_corner_mm: number;
   label_pages: number;
   allow_pages: boolean;
-  colors: { id?: string; name: string; swatch: string; images: ImageRef[]; mockup_url: string | null; label_x: number; label_y: number; label_w: number; label_rotate: number }[];
+  qty_step: number;
+  released_at: string | null;
+  colors: { id?: string; name: string; swatch: string; images: ImageRef[]; mockup_url: string | null; label_x: number; label_y: number; label_w: number; label_rotate: number; is_mix: boolean }[];
   tiers: { min_qty: number; unit_price: number }[];
   files: { kind: "guide" | "template"; name: string; url: string }[];
 }
@@ -77,6 +79,8 @@ export async function saveProductAction(p: ProductPayload): Promise<{ ok: boolea
     label_corner_mm: num(p.label_corner_mm),
     label_pages: num(p.label_pages, 1),
     allow_pages: p.allow_pages,
+    qty_step: Math.max(1, Math.floor(Number(p.qty_step) || 1)),
+    released_at: p.released_at ? new Date(p.released_at).toISOString() : null,
     updated_at: new Date().toISOString(),
   };
   let id = p.id;
@@ -88,7 +92,7 @@ export async function saveProductAction(p: ProductPayload): Promise<{ ok: boolea
   const keep = new Set<string>();
   for (const [i, c] of p.colors.entries()) {
     if (!c.name.trim()) continue;
-    const data = { product_id: id, name: c.name.trim(), swatch: c.swatch, images: c.images.filter((x) => x.url), mockup_url: c.mockup_url || null, label_x: num(c.label_x), label_y: num(c.label_y), label_w: num(c.label_w), label_rotate: Number(c.label_rotate) || 0, sort_order: i };
+    const data = { product_id: id, name: c.name.trim(), swatch: c.swatch, images: c.images.filter((x) => x.url), mockup_url: c.mockup_url || null, label_x: num(c.label_x), label_y: num(c.label_y), label_w: num(c.label_w), label_rotate: Number(c.label_rotate) || 0, is_mix: !!c.is_mix, sort_order: i };
     if (c.id && existing.some((e) => e.id === c.id)) {
       await db.update("product_colors", { id: c.id }, data);
       keep.add(c.id);

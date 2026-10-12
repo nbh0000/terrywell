@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, FileUp, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { fmtMm, workSize, type DesignDoc, type LabelSpec } from "@/lib/editor/types";
 import { PALETTE, type ToolKey } from "./constants";
 import { renderPage } from "./fabric-setup";
+import { ACCEPT_FILES, ACCEPT_IMAGES, downscale, importFile } from "./importFile";
+import { QrPanel } from "./QrPanel";
 import type { EditorApi, EditorSticker, EditorTemplate } from "./Editor";
 
 const btn = "h-12 w-full rounded-[8px] border border-[#dcdcdc] bg-white text-[15px] transition-colors hover:border-ink/40";
-const MAX_UPLOAD = 20 * 1024 * 1024;
 
 export function ToolPanel(p: {
   tool: ToolKey;
@@ -46,6 +47,8 @@ export function ToolPanel(p: {
       return <StickerPanel ed={p.ed} stickers={p.stickers} />;
     case "background":
       return <BackgroundPanel ed={p.ed} />;
+    case "code":
+      return <QrPanel ed={p.ed} />;
   }
 }
 
@@ -89,58 +92,70 @@ function PagePanel({ ed, label }: { ed: EditorApi; label: LabelSpec }) {
   );
 }
 
-/** 큰 사진은 줄여서 쓴다 (300dpi 라벨에 2400px 이면 충분) */
-async function downscale(file: File, max = 2400): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((res, rej) => {
-      const i = new Image();
-      i.onload = () => res(i);
-      i.onerror = rej;
-      i.src = url;
-    });
-    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.naturalWidth * s);
-    c.height = Math.round(img.naturalHeight * s);
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL(file.type === "image/png" || file.type === "image/webp" ? "image/png" : "image/jpeg", 0.9);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
+// 사진 패널: 이미지 불러오기 · 파일 불러오기(PDF·AI·SVG) · 카메라 촬영
 function PhotoPanel({ ed, photos, setPhotos }: { ed: EditorApi; photos: { id: string; url: string }[]; setPhotos: (fn: (p: { id: string; url: string }[]) => { id: string; url: string }[]) => void }) {
-  const input = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const frameSelected = ed.selection?.kind === "frame";
-  async function onFiles(files: FileList | null) {
+
+  async function onFiles(files: FileList | null, el: HTMLInputElement | null) {
     if (!files?.length) return;
     setErr(null);
     setBusy(true);
     for (const f of Array.from(files)) {
-      if (!/^image\/(png|jpeg|webp)$/.test(f.type)) {
-        setErr("PNG, JPG, WEBP 이미지만 올릴 수 있습니다.");
-        continue;
+      try {
+        const list = await importFile(f);
+        setPhotos((prev) => [...list.map((x) => ({ id: crypto.randomUUID(), url: x.url })), ...prev]);
+        // 첫 장만 바로 넣고, 여러 쪽 PDF 의 나머지는 아래 목록에서 고른다
+        if (list[0]) await ed.addImage(list[0].url, "photo");
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "파일을 불러오지 못했습니다.");
       }
-      if (f.size > MAX_UPLOAD) {
-        setErr("20MB 이하 이미지만 올릴 수 있습니다.");
-        continue;
-      }
+    }
+    setBusy(false);
+    if (el) el.value = "";
+  }
+
+  async function onCamera(files: FileList | null) {
+    const f = files?.[0];
+    if (!f) return;
+    setErr(null);
+    setBusy(true);
+    try {
       const url = await downscale(f);
       setPhotos((prev) => [{ id: crypto.randomUUID(), url }, ...prev]);
       await ed.addImage(url, "photo");
+    } catch {
+      setErr("사진을 불러오지 못했습니다.");
     }
     setBusy(false);
-    if (input.current) input.current.value = "";
+    if (cameraInput.current) cameraInput.current.value = "";
   }
+
+  const big = "flex h-[74px] flex-col items-center justify-center gap-1.5 rounded-[8px] border border-[#dcdcdc] bg-white text-[13.5px] transition-colors hover:border-ink/40 disabled:opacity-50";
   return (
     <div>
-      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(e) => onFiles(e.target.files)} />
-      <button type="button" className={btn} onClick={() => input.current?.click()} disabled={busy}>{busy ? "불러오는 중…" : "이미지 불러오기"}</button>
-      <p className="mt-2 text-[12px] text-muted">
-        {frameSelected ? "선택한 사진틀 안에 사진이 들어갑니다. " : ""}PNG 투명 배경을 그대로 쓸 수 있습니다.
+      <input ref={imageInput} type="file" accept={ACCEPT_IMAGES} multiple hidden onChange={(e) => onFiles(e.target.files, imageInput.current)} />
+      <input ref={fileInput} type="file" accept={`${ACCEPT_FILES},${ACCEPT_IMAGES}`} multiple hidden onChange={(e) => onFiles(e.target.files, fileInput.current)} />
+      <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onCamera(e.target.files)} />
+      <div className="grid grid-cols-3 gap-2">
+        <button type="button" className={big} onClick={() => imageInput.current?.click()} disabled={busy}>
+          <ImagePlus size={20} strokeWidth={1.6} /> 이미지 불러오기
+        </button>
+        <button type="button" className={big} onClick={() => fileInput.current?.click()} disabled={busy}>
+          <FileUp size={20} strokeWidth={1.6} /> 파일 불러오기
+        </button>
+        <button type="button" className={big} onClick={() => cameraInput.current?.click()} disabled={busy}>
+          <Camera size={20} strokeWidth={1.6} /> 카메라 촬영
+        </button>
+      </div>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted">
+        {busy ? "불러오는 중… " : ""}
+        {frameSelected ? "선택한 사진틀 안에 사진이 들어갑니다. " : ""}
+        JPG · PNG · WEBP · GIF · SVG · PDF · AI(PDF 호환 저장) 파일을 넣을 수 있습니다. PNG 투명 배경은 그대로 유지됩니다. EPS 는 PDF 로 저장해서 불러와 주세요.
       </p>
       {err && <p role="alert" className="mt-1 text-[12px] text-alert">{err}</p>}
       {photos.length > 0 && (
@@ -382,7 +397,7 @@ function BackgroundPanel({ ed }: { ed: EditorApi }) {
         <button type="button" onClick={() => ed.setBackground(null)} className="rounded-full border border-line px-3 py-1 text-[12px]">배경 삭제</button>
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
-        <button type="button" onClick={() => picker.current?.click()} className="grid size-10 place-items-center rounded-[8px] border-2 border-alert text-alert" aria-label="커스텀 색상 추가">
+        <button type="button" onClick={() => picker.current?.click()} className="grid size-10 place-items-center rounded-[8px] border-2 border-point text-point" aria-label="커스텀 색상 추가">
           <Plus size={18} />
         </button>
         <input

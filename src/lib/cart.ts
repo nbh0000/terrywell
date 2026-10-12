@@ -1,6 +1,6 @@
 import "server-only";
 import { getDb } from "@/lib/db";
-import { shippingFee, splitVat, unitPriceFor } from "@/lib/pricing";
+import { normalizeQty, shippingFee, splitVat, unitPriceFor } from "@/lib/pricing";
 import { getSetting } from "@/lib/site";
 
 export interface CartLine {
@@ -16,6 +16,7 @@ export interface CartLine {
   thumbnail: string | null; // 디자인 썸네일 또는 제품 사진
   fileName: string | null; // PDF 업로드 파일명
   quantity: number;
+  qtyStep: number; // 수량 단위 (5P 세트면 5)
   unitPrice: number;
   lineAmount: number;
   supply: number;
@@ -38,8 +39,10 @@ export async function loadCart(userId: string, onlyIds?: string[]) {
       it.upload_id ? db.get("design_uploads", { id: it.upload_id }) : null,
       db.select("product_price_tiers", { where: { product_id: product.id } }),
     ]);
-    const unitPrice = unitPriceFor(it.quantity, tiers, product.base_price);
-    const lineAmount = unitPrice * it.quantity;
+    // 수량 단위가 바뀌기 전에 담은 줄도 단위에 맞춰 계산한다
+    const quantity = normalizeQty(it.quantity, product.qty_step);
+    const unitPrice = unitPriceFor(quantity, tiers, product.base_price);
+    const lineAmount = unitPrice * quantity;
     const v = splitVat(lineAmount, product.vat_included);
     lines.push({
       id: it.id,
@@ -53,7 +56,8 @@ export async function loadCart(userId: string, onlyIds?: string[]) {
       uploadId: upload?.id ?? null,
       thumbnail: design?.thumbnail_url ?? color?.images[1]?.url ?? product.images[0]?.url ?? null,
       fileName: upload?.file_name ?? null,
-      quantity: it.quantity,
+      quantity,
+      qtyStep: Math.max(1, product.qty_step || 1),
       unitPrice,
       lineAmount,
       supply: v.supply,

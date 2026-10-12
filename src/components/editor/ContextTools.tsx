@@ -119,7 +119,7 @@ export function ContextBar({ ed, ctx, setCtx }: { ed: EditorApi; ctx: CtxKey | n
           key={key}
           type="button"
           onClick={on}
-          className={`flex min-w-[62px] shrink-0 flex-col items-center gap-1 px-1.5 py-1.5 text-[11.5px] ${active ? "text-alert" : key === "del" ? "text-ink" : "text-ink"}`}
+          className={`flex min-w-[62px] shrink-0 flex-col items-center gap-1 px-1.5 py-1.5 text-[11.5px] ${active ? "text-point" : "text-ink"}`}
         >
           <Icon size={20} strokeWidth={1.6} />
           <span className="whitespace-nowrap">{label}</span>
@@ -247,7 +247,7 @@ export function ContextPanel({ ctxKey, ed }: { ctxKey: CtxKey; ed: EditorApi }) 
 function ColorGrid({ value, onPick }: { value: string; onPick: (c: string) => void }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(32px,1fr))] gap-1.5">
-      <label className="relative grid aspect-square cursor-pointer place-items-center rounded-[7px] border-2 border-alert text-[16px] text-alert" aria-label="직접 고르기">
+      <label className="relative grid aspect-square cursor-pointer place-items-center rounded-[7px] border-2 border-point text-[16px] text-point" aria-label="직접 고르기">
         +
         <input type="color" className="absolute inset-0 opacity-0" onChange={(e) => onPick(e.target.value)} />
       </label>

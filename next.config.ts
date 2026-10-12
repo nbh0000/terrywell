@@ -5,6 +5,8 @@ const basePath = process.env.NEXT_BASE_PATH || undefined;
 
 const nextConfig: NextConfig = {
   basePath,
+  // 브라우저 코드에서 public 파일 주소를 만들 때 쓴다 (PDF 읽기 워커 등)
+  env: { NEXT_PUBLIC_BASE_PATH: basePath ?? "" },
   distDir: process.env.NEXT_DIST_DIR || ".next",
   experimental: {
     serverActions: {

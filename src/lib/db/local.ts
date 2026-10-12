@@ -35,6 +35,8 @@ export async function loadStore(): Promise<Store> {
   if (mtime) {
     cache = JSON.parse(await fs.readFile(DB_FILE, "utf8")) as Store;
     cacheMtime = mtime;
+    // 나중에 추가된 테이블은 빈 목록으로 시작
+    for (const t of Object.keys(buildSeed()) as TableName[]) (cache as Record<string, unknown>)[t] ??= [];
   } else {
     cache = buildSeed() as Store;
     await persist();

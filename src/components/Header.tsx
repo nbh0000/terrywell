@@ -10,7 +10,7 @@ import { logoutAction } from "@/app/(site)/(auth)/actions";
 export const NAV = [
   { href: "/about", label: "회사 소개" },
   { href: "/products", label: "제품 소개" },
-  { href: "/quote", label: "견적문의" },
+  { href: "/qna", label: "Q&A", also: ["/quote"] },
   { href: "/notices", label: "공지사항" },
 ];
 

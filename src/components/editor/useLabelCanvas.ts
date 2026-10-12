@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Canvas, Circle, Ellipse, FabricImage, Rect, Textbox, filters, loadSVGFromURL, util, type FabricObject } from "fabric";
+import { Canvas, Circle, Ellipse, FabricImage, Rect, Textbox, filters, loadSVGFromString, loadSVGFromURL, util, type FabricObject } from "fabric";
 import { K, workSize, type DesignDoc, type LabelSpec } from "@/lib/editor/types";
 import { fitTemplate, metaOf, setMeta, type TwMeta } from "./fabric-setup";
 import { PT_TO_MM } from "./constants";
@@ -294,6 +294,21 @@ export function useLabelCanvas(label: LabelSpec, initialPages: unknown[] | null,
     [addImage, place, trimW, trimH],
   );
 
+  /** SVG 글(QR·바코드 등)을 벡터 그대로 넣는다. size = 라벨 짧은 변 대비 비율 */
+  const addSvgString = useCallback(
+    async (svg: string, size = 0.6) => {
+      const { objects, options } = await loadSVGFromString(svg);
+      const g = util.groupSVGElements(objects.filter(Boolean) as FabricObject[], options);
+      const max = Math.min(trimW, trimH) * size;
+      g.scale(max / Math.max(g.width ?? 1, g.height ?? 1));
+      g.set(center());
+      setMeta(g, { kind: "sticker" });
+      place(g);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [place, trimW, trimH],
+  );
+
   const addFrame = useCallback(
     (shape: "rect" | "round" | "circle" | "ellipse") => {
       const s = Math.min(trimW, trimH) * 0.6;
@@ -489,6 +504,7 @@ export function useLabelCanvas(label: LabelSpec, initialPages: unknown[] | null,
     addText,
     addImage,
     addSvgSticker,
+    addSvgString,
     addFrame,
     setBackground,
     applyTemplate,

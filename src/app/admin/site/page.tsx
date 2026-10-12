@@ -5,9 +5,11 @@ import { SiteForm } from "./SiteForm";
 export const metadata = { title: "사이트 설정" };
 
 export default async function AdminSite() {
-  const [company, shipping, home, about, customLabel, editorGuide, pdfConsent, legal] = await Promise.all([
+  const [company, shipping, products, mixNotice, home, about, customLabel, editorGuide, pdfConsent, legal] = await Promise.all([
     getSetting("company"),
     getSetting("shipping"),
+    getSetting("products"),
+    getContent("mixNotice"),
     getContent("home"),
     getContent("about"),
     getContent("customLabel"),
@@ -18,7 +20,7 @@ export default async function AdminSite() {
   return (
     <>
       <PageTitle title="사이트 설정 · 콘텐츠" />
-      <SiteForm initial={{ company, shipping, home, about, customLabel, editorGuide, pdfConsent, legal }} />
+      <SiteForm initial={{ company, shipping, products, mixNotice, home, about, customLabel, editorGuide, pdfConsent, legal }} />
     </>
   );
 }

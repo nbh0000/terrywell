@@ -32,7 +32,9 @@ export default async function EditProduct({ params }: PageProps<"/admin/products
     label_bleed_mm: Number(p.label_bleed_mm),
     label_safe_mm: Number(p.label_safe_mm),
     label_corner_mm: Number(p.label_corner_mm),
-    colors: colors.map((c) => ({ id: c.id, name: c.name, swatch: c.swatch, images: c.images, mockup_url: c.mockup_url, label_x: Number(c.label_x), label_y: Number(c.label_y), label_w: Number(c.label_w), label_rotate: Number(c.label_rotate) })),
+    qty_step: p.qty_step ?? 1,
+    released_at: p.released_at ? p.released_at.slice(0, 10) : null,
+    colors: colors.map((c) => ({ id: c.id, name: c.name, swatch: c.swatch, images: c.images, mockup_url: c.mockup_url, label_x: Number(c.label_x), label_y: Number(c.label_y), label_w: Number(c.label_w), label_rotate: Number(c.label_rotate), is_mix: !!c.is_mix })),
     tiers: tiers.map((t) => ({ min_qty: t.min_qty, unit_price: t.unit_price })),
     files: files.map((f) => ({ kind: f.kind, name: f.name, url: f.url })),
   };

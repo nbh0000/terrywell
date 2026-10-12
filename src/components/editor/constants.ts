@@ -29,4 +29,4 @@ export const GUIDE = { trim: "#d1347a", work: "#7b3f98", safe: "#f2d23a" };
 
 export const PT_TO_MM = 0.3528;
 
-export type ToolKey = "size" | "page" | "photo" | "frame" | "text" | "design" | "ai" | "sticker" | "background";
+export type ToolKey = "size" | "page" | "photo" | "frame" | "text" | "design" | "ai" | "sticker" | "code" | "background";

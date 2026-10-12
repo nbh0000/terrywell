@@ -59,6 +59,8 @@ export interface Product {
   label_corner_mm: number;
   label_pages: number;
   allow_pages: boolean;
+  qty_step: number; // 수량 단위 (5P 세트면 5). 최소 주문 수량도 이 값
+  released_at: string | null; // 출시일. 이 날부터 NEW_DAYS 동안 NEW 표시 (없으면 created_at)
   created_at: string;
   updated_at: string;
 }
@@ -74,6 +76,7 @@ export interface ProductColor {
   label_y: number;
   label_w: number;
   label_rotate: number;
+  is_mix: boolean; // 혼합 옵션 (각 색상을 한 장씩 제작). 목업은 대표 색상 사진
   sort_order: number;
 }
 
@@ -215,6 +218,33 @@ export interface Notice {
   updated_at: string;
 }
 
+export interface Faq {
+  id: string;
+  category: string;
+  question: string;
+  answer_html: string;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export type InquiryStatus = "waiting" | "answered";
+
+export interface Inquiry {
+  id: string;
+  user_id: string;
+  type: string;
+  order_no: string;
+  title: string;
+  body: string;
+  attachments: { name: string; path: string; size: number }[];
+  status: InquiryStatus;
+  answer_html: string;
+  answered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AiGeneration {
   id: string;
   user_id: string;
@@ -252,6 +282,8 @@ export interface Tables {
   order_items: OrderItem;
   quote_requests: QuoteRequest;
   notices: Notice;
+  faqs: Faq;
+  inquiries: Inquiry;
   ai_generations: AiGeneration;
   site_settings: KeyValue;
   site_contents: KeyValue;

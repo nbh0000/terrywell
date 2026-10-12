@@ -1,5 +1,5 @@
 /**
- * Supabase 에 초기 데이터(카테고리·제품·색상·단가표·템플릿·스티커·공지)를 넣는다.
+ * Supabase 에 초기 데이터(카테고리·제품·색상·단가표·템플릿·스티커·공지·자주 묻는 질문)를 넣는다.
  * 사용: .env.local 에 Supabase 키를 넣고 `npm run seed:supabase`
  * 이미 제품이 있으면 아무것도 하지 않는다.
  */
@@ -22,7 +22,7 @@ async function main() {
   }
   const seed = buildSeed();
   // 외래키 순서대로
-  const order = ["categories", "products", "product_colors", "product_price_tiers", "templates", "stickers", "notices"] as const;
+  const order = ["categories", "products", "product_colors", "product_price_tiers", "templates", "stickers", "notices", "faqs"] as const;
   for (const table of order) {
     const rows = seed[table] as object[];
     if (!rows.length) continue;

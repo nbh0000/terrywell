@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { LabelSpec } from "@/lib/editor/types";
 import type { EditorColor } from "./Editor";
 
@@ -10,6 +11,8 @@ import type { EditorColor } from "./Editor";
 export function MockupPreview({ color, labelUrl, label }: { color: EditorColor | null; labelUrl: string | null; label: LabelSpec }) {
   const m = color?.mockup;
   const ratio = label.heightMm / label.widthMm;
+  // 세로로 긴 수건 사진은 패널을 다 차지하지 않게 폭을 줄인다
+  const [portrait, setPortrait] = useState(false);
   if (!m?.url) {
     // 목업 사진이 없는 제품: 라벨만 크게
     return (
@@ -24,7 +27,7 @@ export function MockupPreview({ color, labelUrl, label }: { color: EditorColor |
   const scene = (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={m.url} alt={`${color?.name ?? ""} 수건`} className="block w-full" />
+      <img src={m.url} alt={`${color?.name ?? ""} 수건`} className="block w-full" onLoad={(e) => setPortrait(e.currentTarget.naturalHeight > e.currentTarget.naturalWidth * 1.2)} />
       {labelUrl && (
         <div
           className="absolute"
@@ -48,7 +51,9 @@ export function MockupPreview({ color, labelUrl, label }: { color: EditorColor |
   const zoom = Math.min(6, 38 / Math.max(1, m.w));
   return (
     <div className="space-y-2">
-      <div className="relative overflow-hidden rounded-[8px] bg-[#f3f3f1]">{scene}</div>
+      <div className="rounded-[8px] bg-[#f3f3f1] p-3">
+        <div className="relative mx-auto overflow-hidden" style={{ maxWidth: portrait ? "58%" : "100%" }}>{scene}</div>
+      </div>
       <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] bg-[#f3f3f1]">
         {/* 확대한 목업의 라벨 중심을 상자 가운데에 맞춘다 (translate % 는 자기 크기 기준) */}
         <div className="absolute left-1/2 top-1/2" style={{ width: `${zoom * 100}%`, transform: `translate(-${m.x}%, -${m.y}%)` }}>

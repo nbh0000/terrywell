@@ -15,19 +15,38 @@ export interface CompanyInfo {
   email: string;
   hours_weekday: string;
   hours_lunch: string;
+  instagram: string;
+}
+
+/**
+ * 메인 슬라이드 한 장. 시간이 지나면 다음 장으로 넘어가고, 누르면 href 로 이동한다.
+ * start/end(YYYY-MM-DD, 한국 날짜)를 넣으면 그 기간에만 보인다. 비우면 항상.
+ * style: brand = 파란 TERRYWELL 워드마크형, product = 흰 글씨 제품 배너형
+ */
+export interface HomeSlide {
+  image: string | null;
+  style: "brand" | "product";
+  title: string;
+  subtitle: string;
+  badge: string;
+  button: string;
+  href: string;
+  start: string;
+  end: string;
 }
 
 export interface HomeContent {
-  hero: { image: string | null; title: string; slogan: string };
-  cards: { title: string; subtitle: string; image: string | null; href: string }[];
-  banner: { image: string | null; title: string; badge: string; button: string; href: string };
+  slides: HomeSlide[];
+  interval_sec: number;
+  products_title: string;
+  brand: { image: string | null; label: string; caption: string; href: string };
 }
 
 export const DEFAULT_SETTINGS = {
   company: {
     // 시안 푸터 값 + 고객 정보.txt. 통신판매업번호는 아직 없다
     company_name: "주식회사 테리웰",
-    address: "대전광역시 대덕구 무지니1길 49",
+    address: "대전광역시 대덕구 한남로 70 캠퍼스혁신파크 A동 109호",
     ceo: "이수빈",
     business_number: "381-86-04118",
     mail_order_number: "",
@@ -35,40 +54,40 @@ export const DEFAULT_SETTINGS = {
     email: "sales@terrywell.kr",
     hours_weekday: "월-금 10:00 - 17:00",
     hours_lunch: "점심시간 11:30-13:00",
+    instagram: "https://www.instagram.com/aeru.moment/",
   } satisfies CompanyInfo,
   shipping: { fee: 3000, free_over: 0 }, // free_over 0 = 무료배송 기준 없음
+  // 새 제품은 출시일부터 new_days 동안 NEW 표시 (지나면 자동으로 사라짐)
+  products: { new_days: 90 },
   ai: { enabled: true, daily_free_limit: 10, styles: ["일러스트", "미니멀", "수채화", "로고형", "패턴"] },
 };
 
 export const DEFAULT_CONTENTS = {
+  // 2026-10 고객 요청: 카드 4개를 빼고, 히어로와 신제품 배너를 넘어가는 슬라이드로 합쳤다
   home: {
-    hero: { image: IMAGES.homeHero, title: "TERRYWELL", slogan: "A Better Everyday, Woven into Every Towel." },
-    cards: [
-      { title: "Collection", subtitle: "제품", image: IMAGES.cardCollection, href: "/products" },
-      { title: "Custom", subtitle: "커스텀 라벨", image: IMAGES.cardCustom, href: "/custom-label" },
-      { title: "Quality", subtitle: "원단, 인증, 제작방식", image: IMAGES.cardQuality, href: "/about#quality" },
-      { title: "Journal", subtitle: "브랜드 소식, 스타일링", image: IMAGES.cardJournal, href: "/notices" },
+    slides: [
+      { image: IMAGES.homeHero, style: "brand", title: "TERRYWELL", subtitle: "A Better Everyday, Woven into Every Towel.", badge: "", button: "", href: "/about", start: "", end: "" },
+      { image: IMAGES.homeBanner, style: "product", title: "Lollipop Stripe Towel", subtitle: "", badge: "NEW", button: "바로가기", href: "/products/lollipop-stripe-towel", start: "", end: "" },
     ],
-    banner: {
-      image: IMAGES.homeBanner,
-      title: "Lollipop Stripe Towel",
-      badge: "NEW",
-      button: "바로가기",
-      href: "/products/lollipop-stripe-towel",
-    },
-  } satisfies HomeContent,
-  // 문구는 reference/01 시안 그대로. 문단 = 줄 배열
+    interval_sec: 5,
+    products_title: "Products",
+    brand: { image: IMAGES.cardJournal, label: "BRAND", caption: "수건에 더 나은 일상을 담다", href: "/about" },
+  } satisfies HomeContent as HomeContent,
+  // 문단 = 줄 배열. intro 는 맨 위 로고 옆 문구, paragraphs 는 사진 옆 본문 (2026-10 고객 문구)
   about: {
+    intro: [
+      ["Terrywell", "수건에 더 나은 일상을 담다."],
+      ["수건의 좋은 품질뿐만 아니라 건강함, 편안함, 디자인까지 완성하는 타월"],
+      ["매일 아침을 시작할 때 만족스러울 하루를 줄 수 있도록 노력합니다."],
+    ],
     heading: ["Better", "Better", "Better"],
     image1: IMAGES.about1,
     image2: IMAGES.about2,
     paragraphs: [
-      ["하루는 모두에게 같은 시간으로 주어지지만,그 안에 담긴 이야기는", "모두 다릅니다."],
-      ["분주한 아침,여유로운 오후, 소중한 사람과 함께하는 순간,", "혼자만의 쉼을 누리는 시간까지."],
-      ["우리는 저마다의 일상이 그 자체로 충분히 소중하다고 믿습니다."],
-      ["Terrywell은 단순히 수건을 만드는 것이 아니라,", "당신의 하루를 함께하는 순간을 생각합니다."],
-      ["매일 가장 가까이에서 닿는 한 장의 수건이 익숙한 일상 속 작은", "편안함이 되고, 오래 기억될 따뜻한 순간이 되기를 바랍니다."],
-      ["우리는 수건에 여러분의 일상을 담습니다."],
+      ["하루를 시작하는 작은 순간이", "조금 더 기분 좋은 시간이 되기를 바랍니다."],
+      ["좋아하는 것과 원하는 것,", "소중하게 담고 싶은 마음을 자유롭게 더해보세요."],
+      ["여러분의 상상이 하나의 모습으로 완성되어", "평범한 일상에 작은 특별함이 더해지기를 바랍니다."],
+      ["Terrywell은 여러분의 마음과 상상을 담아", "더 나은 하루의 시작을 함께 만들어갑니다."],
     ],
   },
   // 이용약관 · 개인정보처리방침 (초안. 고객사 검토 후 관리자에서 확정)
@@ -94,6 +113,14 @@ export const DEFAULT_CONTENTS = {
     notes: [
       { title: "PDF 후가공 레이어 주문X", body: "PDF 파일에 후가공 레이어가 포함되어 있더라도 후가공 레이어는 무시됩니다." },
       { title: "화이트 인쇄 > 자동화이트", body: "화이트 인쇄 옵션 선택 시 업로드하신 이미지 영역에 맞춰 자동으로 화이트 인쇄가 적용됩니다. 화이트 인쇄 레이어가 포함된 PDF 파일을 업로드하더라도, 화이트 레이어는 무시됩니다." },
+    ],
+  },
+  // 혼합 색상 안내 (제품 상세·에디터 색상 고르는 곳 아래). 첫 줄은 굵게
+  mixNotice: {
+    lines: [
+      "※ 혼합 색상 안내",
+      "혼합 옵션은 대표 색상 1장만 보여드린 예시 이미지입니다.",
+      "실제 주문 시에는 선택하신 혼합 구성에 따라 각 수건을 한 장씩 제작하여 보내드립니다.",
     ],
   },
   // 제품 상세 PDF 업로드 필수 동의 (명세 3-6 문구)

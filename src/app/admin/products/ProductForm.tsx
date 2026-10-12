@@ -35,6 +35,8 @@ const blank: ProductPayload = {
   label_corner_mm: 0,
   label_pages: 1,
   allow_pages: false,
+  qty_step: 1,
+  released_at: new Date().toISOString().slice(0, 10),
   colors: [],
   tiers: [{ min_qty: 1, unit_price: 0 }],
   files: [],
@@ -68,12 +70,13 @@ export function ProductForm({ categories, initial }: { categories: Category[]; i
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-5 text-[14px]">
           <span className="text-ink/70">카테고리</span>
-          {categories.map((c) => (
+          {categories.filter((c) => c.slug !== "new").map((c) => (
             <label key={c.id} className="flex items-center gap-1.5">
               <input type="checkbox" className="accent-point" checked={p.category_slugs.includes(c.slug)} onChange={(e) => set("category_slugs", e.target.checked ? [...p.category_slugs, c.slug] : p.category_slugs.filter((s) => s !== c.slug))} />
               {c.name}
             </label>
           ))}
+          <label className="flex items-center gap-1.5">출시일 <input type="date" className={`${inputCls} w-40!`} value={p.released_at ?? ""} onChange={(e) => set("released_at", e.target.value || null)} /></label>
           <label className="ml-auto flex items-center gap-1.5"><input type="checkbox" className="accent-point" checked={p.is_visible} onChange={(e) => set("is_visible", e.target.checked)} />사이트에 노출</label>
           <label className="flex items-center gap-1.5">정렬 순서 <input type="number" className={`${inputCls} w-20!`} value={p.sort_order} onChange={(e) => set("sort_order", Number(e.target.value))} /></label>
         </div>
@@ -96,9 +99,11 @@ export function ProductForm({ categories, initial }: { categories: Category[]; i
       <Card title="가격">
         <div className="grid gap-4 md:grid-cols-3">
           <Label label="기본 단가 (원)"><input type="number" className={inputCls} value={p.base_price} onChange={(e) => set("base_price", Number(e.target.value))} /></Label>
+          <Label label="수량 단위 (개)" hint="5P 세트면 5. 최소 주문 수량도 이 값입니다."><input type="number" min={1} className={inputCls} value={p.qty_step} onChange={(e) => set("qty_step", Math.max(1, Number(e.target.value)))} /></Label>
           <label className="flex items-center gap-2 pt-5 text-[14px]"><input type="checkbox" className="accent-point" checked={p.vat_included} onChange={(e) => set("vat_included", e.target.checked)} />가격에 부가세 포함</label>
         </div>
-        <h3 className="mb-2 mt-5 text-[13px] text-ink/70">수량 구간별 단가표</h3>
+        <h3 className="mb-1 mt-5 text-[13px] text-ink/70">수량 구간별 단가</h3>
+        <p className="mb-2 text-[12px] text-muted">제품 화면에 단가표 버튼은 보이지 않지만, 여기 넣은 구간 단가는 금액 계산에 쓰입니다. 하나만 두면 기본 단가 그대로입니다.</p>
         <ul className="space-y-2">
           {p.tiers.map((t, i) => (
             <li key={i} className="flex items-center gap-2 text-[14px]">
@@ -119,13 +124,12 @@ export function ProductForm({ categories, initial }: { categories: Category[]; i
         </div>
         <div className="mt-4 flex flex-wrap gap-5 text-[14px]">
           <label className="flex items-center gap-1.5"><input type="checkbox" className="accent-point" checked={p.allow_editor} onChange={(e) => set("allow_editor", e.target.checked)} />에디터 편집 허용</label>
-          <label className="flex items-center gap-1.5"><input type="checkbox" className="accent-point" checked={p.allow_upload} onChange={(e) => set("allow_upload", e.target.checked)} />PDF 업로드 허용</label>
           <label className="flex items-center gap-1.5"><input type="checkbox" className="accent-point" checked={p.allow_pages} onChange={(e) => set("allow_pages", e.target.checked)} />페이지 추가 허용 (앞/뒷면)</label>
         </div>
       </Card>
 
       <Card title="색상 옵션 · 목업">
-        <p className="mb-3 text-[12.5px] text-muted">목업 사진 위 파란 상자를 끌어 라벨 붙는 위치를 지정합니다. 크기·회전은 옆 칸에서 조절합니다.</p>
+        <p className="mb-3 text-[12.5px] text-muted">목업 사진 위 파란 상자를 끌어 라벨 붙는 위치를 지정합니다. 크기·회전은 옆 칸에서 조절합니다. &apos;혼합&apos;으로 표시한 색상은 각 색상을 한 장씩 제작한다는 안내가 함께 나옵니다.</p>
         <div className="space-y-4">
           {p.colors.map((c, i) => (
             <ColorRow
@@ -144,7 +148,7 @@ export function ProductForm({ categories, initial }: { categories: Category[]; i
             />
           ))}
         </div>
-        <button type="button" className={`${btnLineCls} mt-3`} onClick={() => set("colors", [...p.colors, { name: "", swatch: "#eeeeee", images: [], mockup_url: null, label_x: 90, label_y: 20, label_w: 8, label_rotate: 0 }])}>
+        <button type="button" className={`${btnLineCls} mt-3`} onClick={() => set("colors", [...p.colors, { name: "", swatch: "#eeeeee", images: [], mockup_url: null, label_x: 80, label_y: 90, label_w: 16, label_rotate: 0, is_mix: false }])}>
           <Plus size={14} />색상 추가
         </button>
       </Card>
@@ -267,7 +271,12 @@ function ColorRow({ value: c, ratio, onChange, onRemove, onMove }: { value: Colo
       <div className="space-y-3">
         <div className="flex flex-wrap items-end gap-3">
           <Label label="색상명"><input className={`${inputCls} w-32!`} value={c.name} onChange={(e) => onChange({ ...c, name: e.target.value })} /></Label>
-          <Label label="스와치"><input type="color" className="h-10 w-14 rounded-[6px] border border-line" value={c.swatch} onChange={(e) => onChange({ ...c, swatch: e.target.value })} /></Label>
+          {c.is_mix ? (
+            <Label label="스와치 (CSS 배경)"><input className={`${inputCls} w-56!`} value={c.swatch} onChange={(e) => onChange({ ...c, swatch: e.target.value })} /></Label>
+          ) : (
+            <Label label="스와치"><input type="color" className="h-10 w-14 rounded-[6px] border border-line" value={/^#[0-9a-f]{6}$/i.test(c.swatch) ? c.swatch : "#eeeeee"} onChange={(e) => onChange({ ...c, swatch: e.target.value })} /></Label>
+          )}
+          <label className="flex items-center gap-1.5 pb-2.5 text-[13px]"><input type="checkbox" className="accent-point" checked={c.is_mix} onChange={(e) => onChange({ ...c, is_mix: e.target.checked })} />혼합</label>
           <Label label="라벨 X %"><input type="number" step="0.1" className={`${inputCls} w-24!`} value={c.label_x} onChange={(e) => onChange({ ...c, label_x: Number(e.target.value) })} /></Label>
           <Label label="라벨 Y %"><input type="number" step="0.1" className={`${inputCls} w-24!`} value={c.label_y} onChange={(e) => onChange({ ...c, label_y: Number(e.target.value) })} /></Label>
           <Label label="라벨 폭 %"><input type="number" step="0.1" className={`${inputCls} w-24!`} value={c.label_w} onChange={(e) => onChange({ ...c, label_w: Number(e.target.value) })} /></Label>

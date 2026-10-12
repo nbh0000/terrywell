@@ -2,6 +2,7 @@
 
 import "./fabric-setup";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CircleHelp,
@@ -12,7 +13,9 @@ import {
   Minus,
   PaintBucket,
   Plus,
+  QrCode,
   Redo2,
+  Save,
   Scaling,
   Sparkles,
   SquareDashed,
@@ -31,11 +34,13 @@ import { ContextBar, ContextPanel, type CtxKey } from "./ContextTools";
 import { ToolPanel } from "./ToolPanels";
 import { MockupPreview } from "./MockupPreview";
 import { GuideModal } from "./GuideModal";
+import { MixNotice } from "@/components/shop/MixNotice";
 
 export interface EditorColor {
   id: string;
   name: string;
   swatch: string;
+  isMix: boolean;
   mockup: MockupSpec;
 }
 export interface EditorTemplate {
@@ -60,6 +65,7 @@ const TOOLS: { key: ToolKey; label: string; Icon: typeof Type }[] = [
   { key: "design", label: "디자인", Icon: LayoutTemplate },
   { key: "ai", label: "AI", Icon: Sparkles },
   { key: "sticker", label: "스티커", Icon: Star },
+  { key: "code", label: "QR·바코드", Icon: QrCode },
   { key: "background", label: "배경", Icon: PaintBucket },
 ];
 
@@ -79,6 +85,7 @@ export function Editor(props: {
   design: { id: string; name: string; doc: unknown; colorId: string | null } | null;
   templateMode?: { id: string | null; name: string; category: string } | null;
   guideNotes: { title: string; body: string }[];
+  mixNotice: string[];
 }) {
   const { product, label, colors } = props;
   const router = useRouter();
@@ -95,6 +102,8 @@ export function Editor(props: {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [mobilePreview, setMobilePreview] = useState(false);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [tempSaving, setTempSaving] = useState(false);
   const dirtyRef = useRef(false);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,6 +224,33 @@ export function Editor(props: {
 
   const color = colors.find((c) => c.id === colorId) ?? colors[0] ?? null;
 
+  /** 디자인 JSON + 썸네일 + 인쇄용 PNG 를 서버에 저장하고 id 를 돌려준다 */
+  async function uploadDesign(): Promise<string> {
+    ed.canvasRef.current?.discardActiveObject();
+    const doc = ed.getDoc();
+    const [thumbnail, printPng] = await Promise.all([
+      renderPage(doc.pages[0], label, { width: 640, area: "trim" }),
+      renderPrintPng(doc.pages[0], label),
+    ]);
+    const res = await saveDesignAction({
+      designId: designId ?? undefined,
+      productId: product.id,
+      colorId,
+      name: `${product.nameKo} 라벨`,
+      doc,
+      thumbnail,
+      printPng,
+    });
+    if (!res.ok) throw new Error(res.error);
+    setDesignId(res.designId);
+    dirtyRef.current = false;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+    router.replace(`/editor/${product.slug}?design=${res.designId}${colorId ? `&color=${colorId}` : ""}`, { scroll: false });
+    return res.designId;
+  }
+
   async function save() {
     if (!props.loggedIn) {
       try {
@@ -227,37 +263,40 @@ export function Editor(props: {
     setModal("saving");
     setError(null);
     try {
-      ed.canvasRef.current?.discardActiveObject();
-      const doc = ed.getDoc();
-      const [thumbnail, printPng] = await Promise.all([
-        renderPage(doc.pages[0], label, { width: 640, area: "trim" }),
-        renderPrintPng(doc.pages[0], label),
-      ]);
-      const res = await saveDesignAction({
-        designId: designId ?? undefined,
-        productId: product.id,
-        colorId,
-        name: `${product.nameKo} 라벨`,
-        doc,
-        thumbnail,
-        printPng,
-      });
-      if (!res.ok) {
-        setError(res.error);
-        setModal("exit");
-        return;
-      }
-      setDesignId(res.designId);
-      dirtyRef.current = false;
-      try {
-        localStorage.removeItem(storageKey);
-      } catch {}
-      router.replace(`/editor/${product.slug}?design=${res.designId}${colorId ? `&color=${colorId}` : ""}`, { scroll: false });
+      await uploadDesign();
       setModal("saved");
     } catch (e) {
       setError(e instanceof Error ? e.message : "저장하지 못했습니다.");
       setModal("exit");
     }
+  }
+
+  /** 임시저장: 회원은 서버(마이페이지 > 저장한 디자인), 비회원은 이 기기에 */
+  async function tempSave() {
+    if (tempSaving) return;
+    if (!props.loggedIn) {
+      if (saveLocalDraft(storageKey, colorId, ed.getDoc())) {
+        dirtyRef.current = false;
+        showToast("이 기기에 임시저장했습니다. 다시 들어오면 이어서 편집할 수 있습니다.");
+      } else showToast("임시저장하지 못했습니다. 로그인하면 계정에 저장할 수 있습니다.");
+      return;
+    }
+    setTempSaving(true);
+    try {
+      await uploadDesign();
+      showToast("임시저장했습니다. 마이페이지 > 저장한 디자인에서 이어서 편집할 수 있습니다.");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "임시저장하지 못했습니다.");
+    } finally {
+      setTempSaving(false);
+    }
+  }
+
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showToast(text: string) {
+    setToast(text);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3800);
   }
 
   async function saveTemplate() {
@@ -315,25 +354,37 @@ export function Editor(props: {
   const panelOpen = !!(ctx || (!selKind && tool));
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#eeeeee] text-ink">
-      {/* 상단 바 */}
-      <header className="flex h-[52px] shrink-0 items-center gap-2 bg-[#040301] px-3 text-white sm:px-4">
-        <h1 className="min-w-0 flex-1 truncate text-[14px] sm:text-[15px]">{tpl ? "템플릿 · " : ""}{product.nameKo} · 라벨</h1>
+    <div className="fixed inset-0 flex flex-col bg-[#f3f3f1] text-ink">
+      {/* 상단 바 (테리웰 톤: 흰 바탕 + 로고 파랑) */}
+      <header className="flex h-[56px] shrink-0 items-center gap-2 border-b border-line bg-white px-3 sm:px-5">
+        <Link href="/" className="hidden shrink-0 font-serif text-[16px] font-extrabold tracking-[0.02em] text-point sm:block" aria-label="TERRYWELL 처음 화면">TERRYWELL</Link>
+        <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden />
+        <h1 className="min-w-0 flex-1 truncate text-[14px] text-ink/80 sm:text-[14.5px]">{tpl ? "템플릿 · " : ""}{product.nameKo} · 라벨</h1>
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-          <button type="button" onClick={() => void ed.undo()} disabled={!ed.history.undo} aria-label="실행취소" className="p-2 disabled:opacity-30">
-            <Undo2 size={20} />
+          <button type="button" onClick={() => void ed.undo()} disabled={!ed.history.undo} aria-label="실행취소" className="rounded-[6px] p-2 hover:bg-tile disabled:opacity-30">
+            <Undo2 size={19} />
           </button>
-          <button type="button" onClick={() => void ed.redo()} disabled={!ed.history.redo} aria-label="다시실행" className="p-2 disabled:opacity-30">
-            <Redo2 size={20} />
+          <button type="button" onClick={() => void ed.redo()} disabled={!ed.history.redo} aria-label="다시실행" className="rounded-[6px] p-2 hover:bg-tile disabled:opacity-30">
+            <Redo2 size={19} />
           </button>
-          <button type="button" onClick={() => setModal("guide")} aria-label="편집 가이드" className="p-2">
-            <CircleHelp size={21} />
+          <button type="button" onClick={() => setModal("guide")} aria-label="편집 가이드" className="rounded-[6px] p-2 hover:bg-tile">
+            <CircleHelp size={20} />
           </button>
           <button type="button" onClick={() => setMobilePreview((v) => !v)} className="flex items-center gap-1 whitespace-nowrap rounded-[6px] px-2 py-1.5 text-[13px] lg:hidden" aria-pressed={mobilePreview}>
             <Eye size={16} /> 미리보기
           </button>
-          <button type="button" onClick={() => setModal("exit")} className="ml-1 whitespace-nowrap rounded-[6px] bg-alert px-3 py-1.5 text-[13px] font-semibold sm:px-3.5 sm:text-[14px]">
-            편집종료
+          {!tpl && (
+            <button type="button" onClick={tempSave} disabled={tempSaving} className="ml-1 hidden items-center gap-1.5 whitespace-nowrap rounded-[6px] border border-line px-3 py-1.5 text-[13.5px] hover:border-ink/40 disabled:opacity-50 sm:flex">
+              <Save size={15} /> {tempSaving ? "저장 중…" : "임시저장"}
+            </button>
+          )}
+          {!tpl && (
+            <button type="button" onClick={tempSave} disabled={tempSaving} aria-label="임시저장" className="rounded-[6px] p-2 hover:bg-tile disabled:opacity-50 sm:hidden">
+              <Save size={19} />
+            </button>
+          )}
+          <button type="button" onClick={() => setModal("exit")} className="ml-1 whitespace-nowrap rounded-[6px] bg-point px-3.5 py-1.5 text-[13.5px] font-medium text-white hover:bg-point-dark sm:text-[14px]">
+            편집 완료
           </button>
         </div>
       </header>
@@ -393,10 +444,11 @@ export function Editor(props: {
                     className={`flex flex-col items-center gap-1 text-[11px] ${c.id === colorId ? "text-ink" : "text-muted"}`}
                   >
                     <span className={`block size-8 rounded-full border ${c.id === colorId ? "border-ink ring-2 ring-ink/15" : "border-line"}`} style={{ background: c.swatch }} />
-                    {c.name}
+                    {c.isMix ? "mix" : c.name}
                   </button>
                 ))}
               </div>
+              {color?.isMix && <MixNotice lines={props.mixNotice} className="mt-3" />}
             </div>
           )}
           <p className="mt-5 text-[11.5px] leading-relaxed text-muted">미리보기는 화면용 참고 이미지이며 실제 원단 인쇄 색과 다를 수 있습니다.</p>
@@ -437,7 +489,7 @@ export function Editor(props: {
                 key={key}
                 type="button"
                 onClick={() => setTool(tool === key ? null : key)}
-                className={`flex min-w-[58px] shrink-0 flex-col items-center gap-1 rounded-[10px] px-2 py-1.5 text-[12px] ${tool === key ? "bg-white text-alert shadow-[0_1px_6px_rgba(0,0,0,0.12)]" : "text-ink"}`}
+                className={`flex min-w-[58px] shrink-0 flex-col items-center gap-1 whitespace-nowrap rounded-[10px] px-2 py-1.5 text-[12px] transition-colors ${tool === key ? "bg-point/[0.08] text-point" : "text-ink hover:bg-tile"}`}
               >
                 <Icon size={21} strokeWidth={1.6} />
                 {l}
@@ -447,9 +499,16 @@ export function Editor(props: {
         </nav>
       </div>
 
+      {toast && (
+        <div role="status" className="pointer-events-none fixed left-1/2 top-[68px] z-50 max-w-[92vw] -translate-x-1/2 rounded-[8px] bg-ink/90 px-4 py-2.5 text-center text-[13px] text-white shadow-lg">
+          {toast}
+        </div>
+      )}
+
       {/* 모달 */}
       {modal === "guide" && (
         <GuideModal
+          label={label}
           notes={props.guideNotes}
           onClose={() => {
             try {
@@ -483,11 +542,11 @@ export function Editor(props: {
         </Dialog>
       )}
       {modal === "exit" && !tpl && (
-        <Dialog title="편집을 종료할까요?" onClose={() => setModal(null)}>
+        <Dialog title="편집을 마칠까요?" onClose={() => setModal(null)}>
           {!props.loggedIn && <p className="mb-3 text-[13px] text-muted">저장하려면 로그인이 필요합니다. 로그인 후 지금 작업을 이어서 저장할 수 있습니다.</p>}
           {error && <p role="alert" className="mb-3 text-[13px] text-alert">{error}</p>}
           <div className="flex flex-col gap-2">
-            <button type="button" className="h-12 rounded-[6px] bg-ink text-[15px] text-white" onClick={save}>{props.loggedIn ? "저장하기" : "로그인하고 저장하기"}</button>
+            <button type="button" className="h-12 rounded-[6px] bg-point text-[15px] text-white hover:bg-point-dark" onClick={save}>{props.loggedIn ? "저장하기" : "로그인하고 저장하기"}</button>
             <button type="button" className="h-12 rounded-[6px] border border-line text-[15px]" onClick={() => setModal(null)}>돌아가기</button>
             <button type="button" className="h-11 text-[13px] text-muted underline" onClick={exitWithoutSave}>저장 안 하고 종료</button>
           </div>
@@ -512,6 +571,16 @@ export function Editor(props: {
       )}
     </div>
   );
+}
+
+/** 이 기기(localStorage)에 편집 중인 디자인을 남긴다 */
+function saveLocalDraft(key: string, colorId: string | null, doc: DesignDoc) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ at: Date.now(), colorId, doc }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** 가이드 선 3종. 캔버스 위 SVG 라서 저장·인쇄 파일에 들어가지 않는다 */

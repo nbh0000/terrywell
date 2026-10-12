@@ -19,12 +19,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const product = await db.get("products", { slug, is_visible: true });
   if (!product) notFound();
 
-  const [colors, tiers, files, user, consent] = await Promise.all([
+  const [colors, tiers, user, mix] = await Promise.all([
     db.select("product_colors", { where: { product_id: product.id }, order: [{ column: "sort_order" }] }),
     db.select("product_price_tiers", { where: { product_id: product.id }, order: [{ column: "min_qty" }] }),
-    db.select("product_files", { where: { product_id: product.id } }),
     getCurrentUser(),
-    getContent("pdfConsent"),
+    getContent("mixNotice"),
   ]);
 
   let wished = false;
@@ -63,15 +62,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
         detailImages: product.detail_images,
         noticeHtml: product.notice_html,
         guideHtml: product.guide_html,
+        qtyStep: product.qty_step ?? 1,
       }}
-      colors={colors.map((c) => ({ id: c.id, name: c.name, swatch: c.swatch, images: c.images }))}
+      colors={colors.map((c) => ({ id: c.id, name: c.name, swatch: c.swatch, images: c.images, isMix: !!c.is_mix }))}
       initialColorId={(colorParam && colors.some((c) => c.id === colorParam) ? colorParam : null) ?? design?.colorId ?? colors[0]?.id ?? null}
       tiers={tiers.map((t) => ({ min_qty: t.min_qty, unit_price: t.unit_price }))}
-      files={{
-        guide: files.find((f) => f.kind === "guide")?.url ?? null,
-        template: files.find((f) => f.kind === "template")?.url ?? null,
-      }}
-      consent={consent.items}
+      mixNotice={mix.lines}
       loggedIn={!!user}
       wished={wished}
       design={design}

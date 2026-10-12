@@ -43,6 +43,12 @@ export default async function OrdersPage() {
             <span className="text-muted">{o.tracking_no ? `송장번호 ${o.tracking_no}` : `배송비 ${won(o.shipping_fee)}`}</span>
             <span className="font-semibold">{won(o.total_amount)}</span>
           </div>
+          {/* 거래내역 출력 */}
+          <div className="mt-3 flex flex-wrap gap-2 text-[13px]">
+            <a href={`/print/orders/${o.id}?doc=quote`} target="_blank" rel="noopener" className="inline-flex h-8 items-center rounded-[6px] border border-line px-3 hover:border-ink/40">견적서 출력</a>
+            <a href={`/print/orders/${o.id}?doc=statement`} target="_blank" rel="noopener" className="inline-flex h-8 items-center rounded-[6px] border border-line px-3 hover:border-ink/40">거래명세서 출력</a>
+            <Link href={`/qna/inquiry/new?order=${o.order_no}`} className="ml-auto inline-flex h-8 items-center px-1 text-muted underline">이 주문 문의하기</Link>
+          </div>
         </li>
       ))}
     </ul>

@@ -39,9 +39,8 @@ export function QuoteForm({ products, defaults }: { products: string[]; defaults
         <label className="block">
           <span className="mb-1.5 block text-[13px] text-ink/80">제품</span>
           <select name="product" defaultValue={defaults.product} className="h-12 w-full rounded-[3px] border border-line bg-paper px-3 text-[15px] outline-none focus:border-ink/50">
-            <option value="">선택해 주세요</option>
+            {products.length !== 1 && <option value="">선택해 주세요</option>}
             {products.map((p) => <option key={p}>{p}</option>)}
-            <option>커스텀 라벨 (기타)</option>
           </select>
         </label>
         <Field label="예상 수량" name="quantity" inputMode="numeric" placeholder="예) 300" />

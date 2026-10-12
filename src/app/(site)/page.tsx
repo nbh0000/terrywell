@@ -1,81 +1,67 @@
 import Link from "next/link";
-import { getContent } from "@/lib/site";
+import { HeroSlider } from "@/components/home/HeroSlider";
+import { ProductRail, type RailItem } from "@/components/home/ProductRail";
+import { getDb } from "@/lib/db";
+import { kstToday } from "@/lib/kst";
+import { isNewProduct } from "@/lib/product-badge";
+import { getContent, getSetting } from "@/lib/site";
 
-// reference/01 "인트로 페이지" 시안 배치. 시안 폭 858px 기준 비율을 vw 로 옮겼다.
+// 2026-10 고객 요청 배치: 크게 넘어가는 슬라이드 → 제품 바로가기 → 브랜드 소개로 가는 이미지
 export default async function Home() {
-  const { hero, cards, banner } = await getContent("home");
+  const db = getDb();
+  const [home, { new_days }, products] = await Promise.all([
+    getContent("home"),
+    getSetting("products"),
+    db.select("products", { where: { is_visible: true }, order: [{ column: "sort_order" }] }),
+  ]);
 
+  // 기간을 정한 슬라이드는 한국 날짜 기준으로 그 기간에만 보인다
+  const today = kstToday();
+  const slides = home.slides.filter((s) => (!s.start || s.start <= today) && (!s.end || today <= s.end));
+
+  // 색상이 있는 제품은 색상별로 한 칸씩 (누르면 그 색상을 고른 상태로 열린다)
+  const items: RailItem[] = [];
+  for (const p of products) {
+    const isNew = isNewProduct(p, new_days);
+    const colors = await db.select("product_colors", { where: { product_id: p.id }, order: [{ column: "sort_order" }] });
+    if (!colors.length) {
+      items.push({ key: p.id, href: `/products/${p.slug}`, image: p.images[0]?.url ?? null, nameKo: p.name_ko, option: "", price: p.base_price, isNew });
+      continue;
+    }
+    for (const c of colors) {
+      items.push({
+        key: c.id,
+        href: `/products/${p.slug}?color=${c.id}`,
+        image: c.images[1]?.url ?? c.images[0]?.url ?? p.images[0]?.url ?? null,
+        nameKo: p.name_ko,
+        option: c.name,
+        price: p.base_price,
+        isNew,
+      });
+    }
+  }
+
+  const b = home.brand;
   return (
     <>
-      {/* 히어로: 커튼 사진, 왼쪽에 TERRYWELL + 슬로건 */}
-      {/* 모바일은 시안 비율이면 너무 낮아 조금 키운다 */}
-      <section className="relative aspect-[4/3] w-full overflow-hidden bg-cloud sm:aspect-[858/450]">
-        {hero.image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={hero.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        )}
-        <div className="absolute left-[5.8%] top-[34%] sm:top-[38%]">
-          <h1 className="font-serif text-[clamp(2.3rem,5.15vw,5.6rem)] font-extrabold leading-[0.95] tracking-[0.005em] text-point">
-            {hero.title}
-          </h1>
-          <p className="mt-[0.5vw] font-display text-[clamp(0.85rem,1.62vw,1.75rem)] font-light tracking-[-0.005em] text-point">
-            {hero.slogan}
-          </p>
-        </div>
-      </section>
+      <HeroSlider slides={slides} intervalSec={home.interval_sec} />
+      <ProductRail title={home.products_title} items={items} />
 
-      {/* 카테고리 카드 4개 */}
-      <section className="w-full px-[2.6%] pb-[7.6%] pt-[4.9%]">
-        <div className="grid grid-cols-2 gap-[3vw] md:grid-cols-4 md:gap-[2.1%]">
-          {cards.map((c) => (
-            <Link
-              key={c.title}
-              href={c.href}
-              className="group relative block overflow-hidden bg-cloud [border-radius:24%/19%]"
-              style={{ aspectRatio: "190 / 238" }}
-            >
-              {c.image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.image} alt="" className="absolute inset-0 h-full w-full scale-[1.06] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.1]" />
-              )}
-              <div className="absolute inset-x-0 top-[44%] -translate-y-1/2 text-center font-display leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.18)]">
-                <div className="text-[clamp(1rem,1.75vw,1.6rem)]">{c.title}</div>
-                <div className="text-[clamp(0.8rem,1.45vw,1.3rem)]">{c.subtitle}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* 신제품 배너 */}
-      <section className="relative aspect-[16/10] w-full overflow-hidden bg-cloud sm:aspect-[858/259]">
-        {banner.image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={banner.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        )}
-        <span
-          className="absolute right-[2.6%] top-[7%] grid w-[11.2%] place-items-center bg-point font-serif text-[clamp(0.7rem,1.6vw,1.5rem)] text-white"
-          style={{
-            aspectRatio: "96 / 50",
-            clipPath:
-              "polygon(50% 0%, 58% 14%, 72% 4%, 74% 22%, 92% 16%, 86% 36%, 100% 44%, 86% 56%, 94% 78%, 74% 74%, 70% 96%, 57% 82%, 46% 100%, 39% 80%, 24% 94%, 24% 72%, 6% 76%, 13% 56%, 0% 44%, 15% 34%, 8% 14%, 27% 20%, 31% 2%, 42% 16%)",
-          }}
-        >
-          {banner.badge}
-        </span>
-        <div className="absolute left-[3.8%] top-[27%]">
-          {/* 시안처럼 첫 단어 / 나머지 두 줄 */}
-          <h2 className="font-display text-[clamp(1.5rem,3.45vw,3.4rem)] font-normal leading-[1.18] text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.12)]">
-            <span className="block">{banner.title.split(" ")[0]}</span>
-            <span className="block">{banner.title.split(" ").slice(1).join(" ")}</span>
-          </h2>
-          <Link
-            href={banner.href}
-            className="mt-[1.6vw] inline-flex items-center gap-1 rounded-full border border-point/60 bg-white px-[1.1em] py-[0.35em] text-[clamp(0.7rem,1.05vw,1rem)] text-point transition-colors hover:bg-point hover:text-white"
-          >
-            {banner.button} <span aria-hidden>→</span>
-          </Link>
-        </div>
+      {/* 브랜드 소개로 가는 이미지: 마우스를 올리면 살짝 어두워지며 BRAND (터치 화면은 처음부터 글자 표시) */}
+      <section className="mx-auto w-full max-w-[1440px] px-5 pb-20 md:px-10 md:pb-28">
+        <Link href={b.href} className="group relative block aspect-[4/3] overflow-hidden bg-cloud sm:aspect-[21/9]" aria-label={`${b.label} ${b.caption}`.trim()}>
+          {b.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={b.image} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]" />
+          )}
+          <span className="absolute inset-0 bg-black/20 transition-colors duration-500 group-hover:bg-black/35 group-focus-visible:bg-black/35 [@media(hover:hover)]:bg-black/0" />
+          <span className="absolute inset-0 grid place-items-center">
+            <span className="text-center text-white transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100 [@media(hover:hover)]:opacity-0">
+              <span className="block font-serif text-[clamp(2rem,4.4vw,4.2rem)] font-bold tracking-[0.18em]">{b.label}</span>
+              {b.caption && <span className="mt-2 block text-[clamp(0.85rem,1.2vw,1.1rem)] tracking-[0.04em]">{b.caption}</span>}
+            </span>
+          </span>
+        </Link>
       </section>
     </>
   );

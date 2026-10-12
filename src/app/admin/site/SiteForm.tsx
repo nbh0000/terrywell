@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import type { CompanyInfo, HomeContent } from "@/lib/site";
+import type { CompanyInfo, HomeContent, HomeSlide } from "@/lib/site";
 import { btnCls, Card, inputCls, Label, textareaCls } from "../ui";
 import { UploadButton } from "../Upload";
 import { saveSiteAction } from "./actions";
@@ -10,7 +10,9 @@ interface Data {
   company: CompanyInfo;
   shipping: { fee: number; free_over: number };
   home: HomeContent;
-  about: { heading: string[]; image1: string; image2: string; paragraphs: string[][] };
+  products: { new_days: number };
+  mixNotice: { lines: string[] };
+  about: { intro: string[][]; heading: string[]; image1: string; image2: string; paragraphs: string[][] };
   customLabel: { image: string; title: string; paragraphs: string[][] };
   editorGuide: { notes: { title: string; body: string }[] };
   pdfConsent: { items: string[] };
@@ -29,7 +31,7 @@ export function SiteForm({ initial }: { initial: Data }) {
     <div className="space-y-5">
       <Section title="사업자 정보 (푸터)" onSave={() => saveSiteAction("company", d.company)}>
         <div className="grid gap-3 md:grid-cols-3">
-          {([["company_name", "상호"], ["ceo", "대표자명"], ["business_number", "사업자등록번호"], ["mail_order_number", "통신판매업번호"], ["phone", "대표 전화"], ["email", "이메일"], ["address", "사업장 주소"], ["hours_weekday", "운영시간"], ["hours_lunch", "점심시간"]] as const).map(([k, l]) => (
+          {([["company_name", "상호"], ["ceo", "대표자명"], ["business_number", "사업자등록번호"], ["mail_order_number", "통신판매업번호 (비우면 표시 안 함)"], ["phone", "대표 전화"], ["email", "이메일"], ["address", "사업장 주소"], ["hours_weekday", "운영시간"], ["hours_lunch", "점심시간"], ["instagram", "인스타그램 주소"]] as const).map(([k, l]) => (
             <Label key={k} label={l}><input className={inputCls} value={d.company[k]} onChange={(e) => set("company", { ...d.company, [k]: e.target.value })} /></Label>
           ))}
         </div>
@@ -43,38 +45,76 @@ export function SiteForm({ initial }: { initial: Data }) {
       </Section>
 
       <Section title="메인 화면" onSave={() => saveSiteAction("home", d.home)}>
-        <h3 className="mb-2 text-[13px] font-medium">히어로</h3>
-        <div className="grid gap-3 md:grid-cols-[200px_1fr_1fr]">
-          <ImageField value={d.home.hero.image} onChange={(v) => set("home", { ...d.home, hero: { ...d.home.hero, image: v } })} />
-          <Label label="제목"><input className={inputCls} value={d.home.hero.title} onChange={(e) => set("home", { ...d.home, hero: { ...d.home.hero, title: e.target.value } })} /></Label>
-          <Label label="슬로건"><input className={inputCls} value={d.home.hero.slogan} onChange={(e) => set("home", { ...d.home, hero: { ...d.home.hero, slogan: e.target.value } })} /></Label>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h3 className="text-[13px] font-medium">넘어가는 슬라이드 <span className="font-normal text-muted">(위에서부터 차례로 보입니다)</span></h3>
+          <Label label="넘어가는 간격 (초)"><input type="number" min={2} className={`${inputCls} w-24!`} value={d.home.interval_sec} onChange={(e) => set("home", { ...d.home, interval_sec: Number(e.target.value) })} /></Label>
         </div>
-        <h3 className="mb-2 mt-5 text-[13px] font-medium">카드 4개</h3>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {d.home.cards.map((c, i) => {
-            const upd = (v: Partial<typeof c>) => set("home", { ...d.home, cards: d.home.cards.map((x, j) => (j === i ? { ...x, ...v } : x)) });
+        <div className="mt-3 space-y-3">
+          {d.home.slides.map((sl, i) => {
+            const upd = (v: Partial<HomeSlide>) => set("home", { ...d.home, slides: d.home.slides.map((x, j) => (j === i ? { ...x, ...v } : x)) });
+            const move = (dir: -1 | 1) => {
+              const arr = [...d.home.slides];
+              const j = i + dir;
+              if (j < 0 || j >= arr.length) return;
+              [arr[i], arr[j]] = [arr[j], arr[i]];
+              set("home", { ...d.home, slides: arr });
+            };
             return (
-              <div key={i} className="space-y-2 rounded-[8px] border border-line p-3">
-                <ImageField value={c.image} onChange={(v) => upd({ image: v })} />
-                <input className={inputCls} value={c.title} onChange={(e) => upd({ title: e.target.value })} aria-label="카드 제목" />
-                <input className={inputCls} value={c.subtitle} onChange={(e) => upd({ subtitle: e.target.value })} aria-label="카드 부제" />
-                <input className={inputCls} value={c.href} onChange={(e) => upd({ href: e.target.value })} aria-label="연결 주소" placeholder="/products" />
+              <div key={i} className="grid gap-3 rounded-[8px] border border-line p-3 md:grid-cols-[180px_1fr]">
+                <ImageField label={`${i + 1}번 이미지`} value={sl.image} onChange={(v) => upd({ image: v })} />
+                <div className="grid content-start gap-2 md:grid-cols-2">
+                  <Label label="모양">
+                    <select className={inputCls} value={sl.style} onChange={(e) => upd({ style: e.target.value as HomeSlide["style"] })}>
+                      <option value="brand">브랜드형 (파란 큰 글자)</option>
+                      <option value="product">제품형 (흰 글자 + 버튼)</option>
+                    </select>
+                  </Label>
+                  <Label label="누르면 이동할 주소" hint="예) /products/lollipop-stripe-towel, https://..."><input className={inputCls} value={sl.href} onChange={(e) => upd({ href: e.target.value })} /></Label>
+                  <Label label="제목"><input className={inputCls} value={sl.title} onChange={(e) => upd({ title: e.target.value })} /></Label>
+                  <Label label="작은 글"><input className={inputCls} value={sl.subtitle} onChange={(e) => upd({ subtitle: e.target.value })} /></Label>
+                  <Label label="뱃지 (제품형, 비우면 없음)"><input className={inputCls} value={sl.badge} onChange={(e) => upd({ badge: e.target.value })} /></Label>
+                  <Label label="버튼 문구 (제품형, 비우면 없음)"><input className={inputCls} value={sl.button} onChange={(e) => upd({ button: e.target.value })} /></Label>
+                  <Label label="보이기 시작하는 날" hint="비우면 바로"><input type="date" className={inputCls} value={sl.start} onChange={(e) => upd({ start: e.target.value })} /></Label>
+                  <Label label="내리는 날 (이날까지 보임)" hint="비우면 계속"><input type="date" className={inputCls} value={sl.end} onChange={(e) => upd({ end: e.target.value })} /></Label>
+                  <div className="flex gap-3 text-[13px] md:col-span-2">
+                    <button type="button" className="underline disabled:opacity-30" disabled={i === 0} onClick={() => move(-1)}>위로</button>
+                    <button type="button" className="underline disabled:opacity-30" disabled={i === d.home.slides.length - 1} onClick={() => move(1)}>아래로</button>
+                    <button type="button" className="ml-auto text-alert underline" onClick={() => set("home", { ...d.home, slides: d.home.slides.filter((_, j) => j !== i) })}>이 슬라이드 삭제</button>
+                  </div>
+                </div>
               </div>
             );
           })}
+          <button
+            type="button"
+            className="text-[13px] underline"
+            onClick={() => set("home", { ...d.home, slides: [...d.home.slides, { image: null, style: "product", title: "", subtitle: "", badge: "", button: "바로가기", href: "/products", start: "", end: "" }] })}
+          >
+            슬라이드 추가
+          </button>
         </div>
-        <h3 className="mb-2 mt-5 text-[13px] font-medium">신제품 배너</h3>
-        <div className="grid gap-3 md:grid-cols-[200px_1fr_1fr]">
-          <ImageField value={d.home.banner.image} onChange={(v) => set("home", { ...d.home, banner: { ...d.home.banner, image: v } })} />
-          <div className="space-y-2">
-            <Label label="제목"><input className={inputCls} value={d.home.banner.title} onChange={(e) => set("home", { ...d.home, banner: { ...d.home.banner, title: e.target.value } })} /></Label>
-            <Label label="뱃지"><input className={inputCls} value={d.home.banner.badge} onChange={(e) => set("home", { ...d.home, banner: { ...d.home.banner, badge: e.target.value } })} /></Label>
-          </div>
-          <div className="space-y-2">
-            <Label label="버튼 문구"><input className={inputCls} value={d.home.banner.button} onChange={(e) => set("home", { ...d.home, banner: { ...d.home.banner, button: e.target.value } })} /></Label>
-            <Label label="연결 주소"><input className={inputCls} value={d.home.banner.href} onChange={(e) => set("home", { ...d.home, banner: { ...d.home.banner, href: e.target.value } })} /></Label>
-          </div>
+
+        <h3 className="mb-2 mt-6 text-[13px] font-medium">제품 바로가기</h3>
+        <Label label="제목"><input className={`${inputCls} max-w-xs`} value={d.home.products_title} onChange={(e) => set("home", { ...d.home, products_title: e.target.value })} /></Label>
+        <p className="mt-1 text-[12px] text-muted">노출 중인 제품이 색상별로 자동으로 나옵니다.</p>
+
+        <h3 className="mb-2 mt-6 text-[13px] font-medium">브랜드 소개 이미지 (마우스를 올리면 어두워지며 글자 표시)</h3>
+        <div className="grid gap-3 md:grid-cols-[180px_1fr_1fr_1fr]">
+          <ImageField value={d.home.brand.image} onChange={(v) => set("home", { ...d.home, brand: { ...d.home.brand, image: v } })} />
+          <Label label="큰 글자"><input className={inputCls} value={d.home.brand.label} onChange={(e) => set("home", { ...d.home, brand: { ...d.home.brand, label: e.target.value } })} /></Label>
+          <Label label="작은 글"><input className={inputCls} value={d.home.brand.caption} onChange={(e) => set("home", { ...d.home, brand: { ...d.home.brand, caption: e.target.value } })} /></Label>
+          <Label label="연결 주소"><input className={inputCls} value={d.home.brand.href} onChange={(e) => set("home", { ...d.home, brand: { ...d.home.brand, href: e.target.value } })} /></Label>
         </div>
+      </Section>
+
+      <Section title="제품 NEW 표시" onSave={() => saveSiteAction("products", d.products)}>
+        <Label label="NEW 표시 기간 (일)" hint="제품 출시일부터 이 기간 동안 NEW 가 붙고, 지나면 자동으로 사라집니다. 출시일은 제품 관리에서 정합니다.">
+          <input type="number" min={0} className={`${inputCls} w-28!`} value={d.products.new_days} onChange={(e) => set("products", { new_days: Number(e.target.value) })} />
+        </Label>
+      </Section>
+
+      <Section title="혼합 색상 안내 문구" onSave={() => saveSiteAction("mixNotice", d.mixNotice)}>
+        <Label label="줄마다 한 줄 (첫 줄은 굵게)"><textarea rows={4} className={textareaCls} value={d.mixNotice.lines.join("\n")} onChange={(e) => set("mixNotice", { lines: e.target.value.split("\n") })} /></Label>
       </Section>
 
       <Section title="회사 소개" onSave={() => saveSiteAction("about", d.about)}>
@@ -83,6 +123,7 @@ export function SiteForm({ initial }: { initial: Data }) {
           <ImageField label="사진 2 (본문 옆)" value={d.about.image2} onChange={(v) => set("about", { ...d.about, image2: v ?? "" })} />
           <Label label="큰 제목 (줄마다 한 단어)"><textarea rows={3} className={textareaCls} value={d.about.heading.join("\n")} onChange={(e) => set("about", { ...d.about, heading: e.target.value.split("\n") })} /></Label>
         </div>
+        <Label label="맨 위 로고 옆 문구 (빈 줄로 문단 구분, 첫 문단은 굵게)"><textarea rows={7} className={`${textareaCls} mt-3`} value={toText(d.about.intro)} onChange={(e) => set("about", { ...d.about, intro: fromText(e.target.value) })} /></Label>
         <Label label="본문 (빈 줄로 문단 구분)"><textarea rows={12} className={`${textareaCls} mt-3`} value={toText(d.about.paragraphs)} onChange={(e) => set("about", { ...d.about, paragraphs: fromText(e.target.value) })} /></Label>
       </Section>
 
