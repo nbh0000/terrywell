@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/mypage", label: "주문 내역" },
+  { href: "/mypage/documents", label: "거래내역 출력" },
   { href: "/mypage/designs", label: "저장한 디자인" },
   { href: "/mypage/wishlist", label: "찜 목록" },
   { href: "/mypage/inquiries", label: "1:1 문의" },

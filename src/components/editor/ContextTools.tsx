@@ -119,7 +119,7 @@ export function ContextBar({ ed, ctx, setCtx }: { ed: EditorApi; ctx: CtxKey | n
           key={key}
           type="button"
           onClick={on}
-          className={`flex min-w-[62px] shrink-0 flex-col items-center gap-1 px-1.5 py-1.5 text-[11.5px] ${active ? "text-point" : "text-ink"}`}
+          className={`flex min-w-[56px] shrink-0 flex-col items-center gap-1 rounded-[8px] px-1 py-1.5 text-[11.5px] hover:bg-[#f3f2ee] ${active ? "text-point" : "text-ink"}`}
         >
           <Icon size={20} strokeWidth={1.6} />
           <span className="whitespace-nowrap">{label}</span>
@@ -137,7 +137,7 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
 );
 
 /** 컨텍스트 도구의 세부 조절 패널 (바텀시트 안) */
-export function ContextPanel({ ctxKey, ed }: { ctxKey: CtxKey; ed: EditorApi }) {
+export function ContextPanel({ ctxKey, ed, fonts = FONTS }: { ctxKey: CtxKey; ed: EditorApi; fonts?: { label: string; family: string }[] }) {
   const o = ed.active();
   if (!o) return null;
   const t = o instanceof Textbox ? o : null;
@@ -146,8 +146,8 @@ export function ContextPanel({ ctxKey, ed }: { ctxKey: CtxKey; ed: EditorApi }) 
   switch (ctxKey) {
     case "font":
       return (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {FONTS.map((f) => (
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+          {fonts.map((f) => (
             <li key={f.family}>
               <button
                 type="button"

@@ -6,16 +6,16 @@ export const metadata: Metadata = { title: "이용가이드" };
 // 헤더 "이용가이드": 주문 순서와 디자인 방식 안내
 const STEPS = [
   { title: "제품 선택", body: "제품 소개에서 수건을 고르고 색상을 선택합니다." },
-  { title: "디자인", body: "에디터로 라벨을 직접 디자인하거나, 완성된 PDF·AI·EPS 파일을 올립니다." },
-  { title: "저장", body: "에디터에서 [편집종료] → [저장하기]를 누르면 마이페이지에 디자인이 보관됩니다." },
-  { title: "주문 · 결제", body: "수량을 정하고 장바구니에 담아 결제합니다. 수량이 많을수록 단가가 낮아집니다(단가표 참고)." },
+  { title: "디자인", body: "[디자인하기]를 눌러 에디터에서 라벨을 만듭니다. 갖고 있는 이미지·PDF·AI·SVG 파일을 불러오거나 카메라로 찍어 넣을 수 있고, QR 코드·바코드도 만들 수 있습니다." },
+  { title: "저장", body: "에디터에서 [편집 완료] → [저장하기]를 누르면 마이페이지에 디자인이 보관됩니다. 작업 중에는 [임시저장]으로 남겨 두고 나중에 이어서 할 수 있습니다." },
+  { title: "주문 · 결제", body: "수량을 정하고 장바구니에 담아 결제합니다. 5P 세트 제품은 5개 단위로 주문합니다. 견적서·거래명세서는 마이페이지에서 출력할 수 있습니다." },
   { title: "제작 · 배송", body: "결제 후 제작이 시작되며 진행 상태와 송장번호는 마이페이지 주문 내역에서 확인할 수 있습니다." },
 ];
 
 const EDITOR = [
-  ["재단선", "실제 제작되는 라벨 크기입니다."],
-  ["작업 사이즈", "배경이 있는 디자인은 이 선까지 채워 주세요."],
-  ["안전 영역", "중요한 글자와 이미지는 이 선 안쪽에 넣어 주세요."],
+  ["재단선", "실제 제작되는 라벨 크기입니다 (6.5×4.5cm)."],
+  ["작업 사이즈", "흰 여백 없이 인쇄되도록 배경이 있는 디자인은 이 선까지 채워 주세요 (6.8×4.8cm)."],
+  ["안전 영역", "글자(문구)와 중요한 이미지는 이 선 안쪽에 넣어 주세요 (5.8×3.8cm)."],
   ["AI 생성", "만들고 싶은 그림을 글로 적으면 라벨 비율에 맞는 이미지를 만들어 줍니다. 회원은 하루 무료 횟수 안에서 쓸 수 있습니다."],
 ];
 
@@ -50,7 +50,7 @@ export default function GuidePage() {
 
       <div className="mt-12 flex flex-wrap gap-2">
         <Link href="/products" className="flex h-12 items-center bg-ink px-7 text-[15px] text-white">라벨 디자인 시작하기</Link>
-        <Link href="/quote" className="flex h-12 items-center border border-ink px-7 text-[15px]">견적문의</Link>
+        <Link href="/qna" className="flex h-12 items-center border border-ink px-7 text-[15px]">Q&amp;A</Link>
       </div>
     </section>
   );

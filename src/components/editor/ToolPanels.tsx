@@ -159,7 +159,7 @@ function PhotoPanel({ ed, photos, setPhotos }: { ed: EditorApi; photos: { id: st
       </p>
       {err && <p role="alert" className="mt-1 text-[12px] text-alert">{err}</p>}
       {photos.length > 0 && (
-        <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
+        <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-4">
           {photos.map((ph) => (
             <li key={ph.id}>
               <button type="button" onClick={() => ed.addImage(ph.url, "photo")} className="block aspect-square w-full overflow-hidden rounded-[6px] border border-line bg-[repeating-conic-gradient(#f0f0f0_0_25%,#fff_0_50%)] bg-[length:12px_12px]">
@@ -228,7 +228,7 @@ function DesignPanel({ ed, templates }: { ed: EditorApi; templates: EditorTempla
         </select>
         <ChevronDown size={16} className="pointer-events-none absolute right-3 top-3.5" />
       </div>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
         {list.map((t) => (
           <li key={t.id}>
             <button type="button" onClick={() => ed.applyTemplate(t.doc as DesignDoc)} className="block w-full overflow-hidden rounded-[6px] border border-line bg-white text-left">
@@ -334,7 +334,7 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
       {!busy && results.length > 0 && (
         <>
           <p className="mt-3 text-[12px] text-muted">마음에 드는 이미지를 누르면 라벨에 들어갑니다.</p>
-          <ul className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <ul className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
             {results.map((u) => (
               <li key={u}>
                 <button type="button" onClick={() => ed.addImage(u, "ai")} className="block w-full overflow-hidden rounded-[6px] border border-line">
@@ -357,7 +357,7 @@ function MyAiImages({ ed }: { ed: EditorApi }) {
   return (
     <div className="mt-4 border-t border-line pt-3">
       <h3 className="text-[13px] text-muted">내 AI 이미지</h3>
-      <ul className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
+      <ul className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-4">
         {me.images.map((u) => (
           <li key={u}>
             <button type="button" onClick={() => ed.addImage(u, "ai")} className="block aspect-square w-full overflow-hidden rounded-[6px] border border-line">
@@ -374,7 +374,7 @@ function MyAiImages({ ed }: { ed: EditorApi }) {
 function StickerPanel({ ed, stickers }: { ed: EditorApi; stickers: EditorSticker[] }) {
   if (!stickers.length) return <p className="py-4 text-center text-[14px] text-muted">등록된 스티커가 없습니다.</p>;
   return (
-    <ul className="grid grid-cols-5 gap-2 sm:grid-cols-8">
+    <ul className="grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-5">
       {stickers.map((s) => (
         <li key={s.id}>
           <button type="button" onClick={() => ed.addSvgSticker(s.url)} className="grid aspect-square w-full place-items-center rounded-[8px] border border-line bg-white p-2" aria-label={s.name}>

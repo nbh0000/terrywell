@@ -72,6 +72,10 @@ export function ProductRail({ title, items }: { title: string; items: RailItem[]
                 {it.option && <span className="text-muted"> · {it.option}</span>}
               </p>
               <p className="mt-0.5 text-[13px] font-medium">{it.price.toLocaleString("ko-KR")}원~</p>
+              {/* 카드 전체가 링크라 버튼 모양만 낸다 */}
+              <span className="mt-3 flex h-9 items-center justify-center gap-1 rounded-[6px] border border-ink/20 text-[13px] text-ink transition-colors group-hover:border-point group-hover:bg-point group-hover:text-white">
+                바로가기 <span aria-hidden>→</span>
+              </span>
             </Link>
           </li>
         ))}

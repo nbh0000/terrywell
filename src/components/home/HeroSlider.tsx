@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { HomeSlide } from "@/lib/site";
 
 // 메인 슬라이드: interval 마다 다음 장으로 넘어가고, 장 전체가 링크다.
@@ -11,7 +12,10 @@ export function HeroSlider({ slides, intervalSec }: { slides: HomeSlide[]; inter
   const [hover, setHover] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [reduced, setReduced] = useState(false);
-  const touchX = useRef<number | null>(null);
+  // 잡고 끌어서 넘기기 (마우스·손가락 공통). 끈 거리가 짧으면 일반 클릭
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const dragged = useRef(false);
+  const [dx, setDx] = useState(0);
   const count = slides.length;
   const paused = hover || hidden;
   const sec = Math.max(2, intervalSec || 5);
@@ -47,14 +51,45 @@ export function HeroSlider({ slides, intervalSec }: { slides: HomeSlide[]; inter
       className="relative h-[min(78svh,640px)] min-h-[380px] w-full overflow-hidden bg-cloud lg:h-[calc(100svh-78px)] lg:max-h-[880px] lg:min-h-[520px]"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      onTouchStart={(e) => {
-        touchX.current = e.touches[0].clientX;
+      style={{ touchAction: "pan-y" }}
+      onPointerDown={(e) => {
+        if (count < 2 || (e.pointerType === "mouse" && e.button !== 0) || (e.target as HTMLElement).closest("button")) return;
+        drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+        dragged.current = false;
       }}
-      onTouchEnd={(e) => {
-        if (touchX.current === null) return;
-        const dx = e.changedTouches[0].clientX - touchX.current;
-        touchX.current = null;
-        if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d || d.id !== e.pointerId) return;
+        const mx = e.clientX - d.x;
+        if (!dragged.current && Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(e.clientY - d.y)) {
+          dragged.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        if (dragged.current) setDx(mx);
+      }}
+      onPointerUp={(e) => {
+        const d = drag.current;
+        drag.current = null;
+        if (!d || !dragged.current) return;
+        const mx = e.clientX - d.x;
+        setDx(0);
+        if (Math.abs(mx) > 50) go(index + (mx < 0 ? 1 : -1));
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+        setDx(0);
+      }}
+      onClickCapture={(e) => {
+        // 끌어서 넘긴 경우에는 링크로 이동하지 않는다
+        if (dragged.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          dragged.current = false;
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") go(index - 1);
+        if (e.key === "ArrowRight") go(index + 1);
       }}
     >
       {slides.map((s, i) => (
@@ -63,6 +98,8 @@ export function HeroSlider({ slides, intervalSec }: { slides: HomeSlide[]; inter
           href={s.href || "/"}
           aria-hidden={i !== index}
           tabIndex={i === index ? 0 : -1}
+          draggable={false}
+          style={i === index && dx ? { transform: `translateX(${dx * 0.35}px)`, transition: "none" } : undefined}
           aria-label={`${s.title} ${s.button || ""}`.trim()}
           className={`absolute inset-0 block transition-opacity duration-1000 ease-out ${i === index ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0"}`}
         >
@@ -71,12 +108,24 @@ export function HeroSlider({ slides, intervalSec }: { slides: HomeSlide[]; inter
             <img
               src={s.image}
               alt=""
+              draggable={false}
               className={`absolute inset-0 h-full w-full object-cover transition-transform duration-[6000ms] ease-out ${i === index && !reduced ? "scale-[1.035]" : "scale-100"}`}
             />
           )}
           {s.style === "brand" ? <BrandCopy s={s} active={i === index} /> : <ProductCopy s={s} active={i === index} />}
         </Link>
       ))}
+
+      {count > 1 && (
+        <>
+          <button type="button" onClick={() => go(index - 1)} aria-label="이전 배너" className={arrowCls(slides[index].style) + " left-3 md:left-6"}>
+            <ChevronLeft size={22} strokeWidth={1.6} />
+          </button>
+          <button type="button" onClick={() => go(index + 1)} aria-label="다음 배너" className={arrowCls(slides[index].style) + " right-3 md:right-6"}>
+            <ChevronRight size={22} strokeWidth={1.6} />
+          </button>
+        </>
+      )}
 
       {count > 1 && (
         <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2 md:bottom-7">
@@ -99,6 +148,12 @@ export function HeroSlider({ slides, intervalSec }: { slides: HomeSlide[]; inter
     </section>
   );
 }
+
+/** 좌우 넘김 버튼: 브랜드형(밝은 사진)은 파란 테두리, 제품형은 흰색 */
+const arrowCls = (style: HomeSlide["style"]) =>
+  `absolute top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full backdrop-blur-sm transition-colors md:size-12 ${
+    style === "brand" ? "border border-point/30 bg-white/60 text-point hover:bg-white" : "border border-white/50 bg-black/10 text-white hover:bg-black/25"
+  }`;
 
 /** 지금 장이 되면 글자가 아래에서 살짝 떠오른다 */
 function rise(active: boolean, delayMs: number) {

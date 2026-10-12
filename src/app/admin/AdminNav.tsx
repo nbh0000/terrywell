@@ -8,6 +8,7 @@ const MENU = [
   { href: "/admin/products", label: "제품 관리" },
   { href: "/admin/templates", label: "템플릿" },
   { href: "/admin/stickers", label: "스티커" },
+  { href: "/admin/fonts", label: "글꼴" },
   { href: "/admin/orders", label: "주문 관리" },
   { href: "/admin/inquiries", label: "1:1 문의" },
   { href: "/admin/quotes", label: "견적문의" },

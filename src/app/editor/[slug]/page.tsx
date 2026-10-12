@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getContent } from "@/lib/site";
 import { Editor } from "@/components/editor/Editor";
+import { FONTS } from "@/components/editor/constants";
 import type { LabelSpec } from "@/lib/editor/types";
 
 export const metadata: Metadata = { title: "라벨 편집", robots: { index: false } };
@@ -17,13 +18,14 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
   const product = await db.get("products", { slug, is_visible: true });
   if (!product || !product.allow_editor) notFound();
 
-  const [colors, templates, stickers, user, guide, mix] = await Promise.all([
+  const [colors, templates, stickers, user, guide, mix, fonts] = await Promise.all([
     db.select("product_colors", { where: { product_id: product.id }, order: [{ column: "sort_order" }] }),
     db.select("templates", { where: { is_visible: true }, order: [{ column: "sort_order" }] }),
     db.select("stickers", { order: [{ column: "sort_order" }] }),
     getCurrentUser(),
     getContent("editorGuide"),
     getContent("mixNotice"),
+    getContent("fonts"),
   ]);
 
   // 기존 디자인 불러오기 (본인 것만)
@@ -72,6 +74,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
       templateMode={templateMode}
       guideNotes={guide.notes}
       mixNotice={mix.lines}
+      fonts={[...FONTS, ...fonts.custom.filter((f) => f.url && f.family)]}
     />
   );
 }

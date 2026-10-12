@@ -24,7 +24,7 @@ DIST = os.path.join(ROOT, ".next-pages")
 
 db = json.load(open(os.path.join(ROOT, ".data", "db.json"), encoding="utf-8"))
 products = [p for p in db["products"] if p["is_visible"]]
-pages = ["/", "/about", "/custom-label", "/products", "/quote", "/notices", "/guide", "/terms", "/privacy", "/login", "/signup", "/search"]
+pages = ["/", "/about", "/custom-label", "/products", "/qna", "/qna/inquiry", "/quote", "/order-lookup", "/notices", "/guide", "/terms", "/privacy", "/login", "/signup", "/search"]
 pages += [f"/products/{p['slug']}" for p in products]
 pages += [f"/editor/{p['slug']}" for p in products if p["allow_editor"]]
 pages += [f"/notices/{n['id']}" for n in db["notices"]]

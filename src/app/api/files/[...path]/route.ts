@@ -12,6 +12,10 @@ const TYPES: Record<string, string> = {
   ai: "application/postscript",
   eps: "application/postscript",
   json: "application/json",
+  woff2: "font/woff2",
+  woff: "font/woff",
+  ttf: "font/ttf",
+  otf: "font/otf",
 };
 
 // 저장소 파일 내려주기. 비공개 버킷은 경로 첫 폴더가 본인 id 이거나 관리자일 때만.

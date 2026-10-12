@@ -1,7 +1,7 @@
 "use client";
 
 import "./fabric-setup";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -86,6 +86,8 @@ export function Editor(props: {
   templateMode?: { id: string | null; name: string; category: string } | null;
   guideNotes: { title: string; body: string }[];
   mixNotice: string[];
+  /** 기본 글꼴 + 관리자가 올린 글꼴 (url 이 있으면 @font-face 로 불러온다) */
+  fonts: { label: string; family: string; url?: string }[];
 }) {
   const { product, label, colors } = props;
   const router = useRouter();
@@ -172,6 +174,8 @@ export function Editor(props: {
     } catch {}
     // localStorage 는 서버 렌더에 없어서 마운트 후 다음 프레임에 연다
     const raf = requestAnimationFrame(() => {
+      // PC 는 왼쪽 패널에 디자인 템플릿을 펼쳐 둔 채 시작한다
+      if (!tpl && matchMedia("(min-width: 1024px)").matches) setTool("design");
       if (saved) setModal("restore");
       else if (!seen) setModal("guide");
     });
@@ -351,30 +355,63 @@ export function Editor(props: {
   const z = ed.zoom;
   const canvasPx = { w: workW * 10 * z, h: workH * 10 * z };
 
-  const panelOpen = !!(ctx || (!selKind && tool));
+  // 패널은 PC(왼쪽) 또는 모바일(아래) 한 곳에만 그린다
+  const isDesktop = useSyncExternalStore(subscribeDesktop, () => matchMedia(DESKTOP_MQ).matches, () => true);
+  // 패널 내용: 요소를 고르면 그 요소의 세부 설정, 아니면 고른 도구
+  const panelContent = ctx ? (
+    <ContextPanel ctxKey={ctx} ed={ed} fonts={props.fonts} />
+  ) : tool && !selKind ? (
+    <ToolPanel tool={tool} ed={ed} label={label} templates={props.templates} stickers={props.stickers} photos={photos} setPhotos={setPhotos} loggedIn={props.loggedIn} />
+  ) : null;
+  const panelTitle = ctx ? "선택한 요소 설정" : (TOOLS.find((t) => t.key === tool)?.label ?? "");
+  const closePanel = () => (ctx ? setCtx(null) : setTool(null));
+  const pickTool = (key: ToolKey) => {
+    const c = ed.canvasRef.current;
+    if (selKind) {
+      c?.discardActiveObject();
+      c?.requestRenderAll();
+    }
+    setCtx(null);
+    setTool(tool === key && !selKind ? null : key);
+  };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#f3f3f1] text-ink">
-      {/* 상단 바 (테리웰 톤: 흰 바탕 + 로고 파랑) */}
-      <header className="flex h-[56px] shrink-0 items-center gap-2 border-b border-line bg-white px-3 sm:px-5">
+    <div className="fixed inset-0 flex flex-col bg-[#f6f5f2] text-ink">
+      {props.fonts.some((f) => f.url) && (
+        <style>{props.fonts.filter((f) => f.url).map((f) => `@font-face{font-family:"${f.family.replace(/"/g, "")}";src:url("${f.url}");font-display:swap}`).join("")}</style>
+      )}
+      {/* 상단 바: 로고 · 단계 · 저장 */}
+      <header className="flex h-[58px] shrink-0 items-center gap-3 border-b border-line bg-white px-3 sm:px-5">
         <Link href="/" className="hidden shrink-0 font-serif text-[16px] font-extrabold tracking-[0.02em] text-point sm:block" aria-label="TERRYWELL 처음 화면">TERRYWELL</Link>
-        <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden />
-        <h1 className="min-w-0 flex-1 truncate text-[14px] text-ink/80 sm:text-[14.5px]">{tpl ? "템플릿 · " : ""}{product.nameKo} · 라벨</h1>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13.5px] font-medium sm:text-[14px]">{tpl ? "템플릿 · " : ""}{product.nameKo}</p>
+          <ol className="hidden items-center gap-1.5 text-[11.5px] text-muted md:flex" aria-label="진행 단계">
+            {["라벨 디자인", "저장", "주문"].map((step, i) => (
+              <li key={step} className={`flex items-center gap-1 ${i === 0 ? "font-medium text-point" : ""}`}>
+                {i > 0 && <span aria-hidden className="mr-0.5 text-line">—</span>}
+                <span className={`grid size-[15px] place-items-center rounded-full text-[10px] ${i === 0 ? "bg-point text-white" : "bg-[#ecebe6] text-muted"}`}>{i + 1}</span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-          <button type="button" onClick={() => void ed.undo()} disabled={!ed.history.undo} aria-label="실행취소" className="rounded-[6px] p-2 hover:bg-tile disabled:opacity-30">
-            <Undo2 size={19} />
-          </button>
-          <button type="button" onClick={() => void ed.redo()} disabled={!ed.history.redo} aria-label="다시실행" className="rounded-[6px] p-2 hover:bg-tile disabled:opacity-30">
-            <Redo2 size={19} />
-          </button>
-          <button type="button" onClick={() => setModal("guide")} aria-label="편집 가이드" className="rounded-[6px] p-2 hover:bg-tile">
-            <CircleHelp size={20} />
+          <div className="mr-1 flex items-center rounded-[8px] bg-[#f3f2ee] p-0.5">
+            <button type="button" onClick={() => void ed.undo()} disabled={!ed.history.undo} aria-label="실행취소" className="rounded-[6px] p-1.5 hover:bg-white disabled:opacity-30">
+              <Undo2 size={18} />
+            </button>
+            <button type="button" onClick={() => void ed.redo()} disabled={!ed.history.redo} aria-label="다시실행" className="rounded-[6px] p-1.5 hover:bg-white disabled:opacity-30">
+              <Redo2 size={18} />
+            </button>
+          </div>
+          <button type="button" onClick={() => setModal("guide")} className="flex items-center gap-1 rounded-[6px] p-2 text-[13px] text-ink/80 hover:bg-tile" aria-label="편집 가이드">
+            <CircleHelp size={19} /> <span className="hidden xl:inline">가이드</span>
           </button>
           <button type="button" onClick={() => setMobilePreview((v) => !v)} className="flex items-center gap-1 whitespace-nowrap rounded-[6px] px-2 py-1.5 text-[13px] lg:hidden" aria-pressed={mobilePreview}>
             <Eye size={16} /> 미리보기
           </button>
           {!tpl && (
-            <button type="button" onClick={tempSave} disabled={tempSaving} className="ml-1 hidden items-center gap-1.5 whitespace-nowrap rounded-[6px] border border-line px-3 py-1.5 text-[13.5px] hover:border-ink/40 disabled:opacity-50 sm:flex">
+            <button type="button" onClick={tempSave} disabled={tempSaving} className="ml-1 hidden items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-line px-3 py-[7px] text-[13.5px] hover:border-ink/40 disabled:opacity-50 sm:flex">
               <Save size={15} /> {tempSaving ? "저장 중…" : "임시저장"}
             </button>
           )}
@@ -383,31 +420,71 @@ export function Editor(props: {
               <Save size={19} />
             </button>
           )}
-          <button type="button" onClick={() => setModal("exit")} className="ml-1 whitespace-nowrap rounded-[6px] bg-point px-3.5 py-1.5 text-[13.5px] font-medium text-white hover:bg-point-dark sm:text-[14px]">
+          <button type="button" onClick={() => setModal("exit")} className="ml-1 whitespace-nowrap rounded-[8px] bg-point px-4 py-[7px] text-[13.5px] font-medium text-white hover:bg-point-dark sm:text-[14px]">
             편집 완료
           </button>
         </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
+        {/* PC: 왼쪽 도구 막대 */}
+        <nav className="hidden w-[84px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-line bg-white px-2 py-3 lg:flex" aria-label="편집 도구">
+          {TOOLS.map(({ key, label: l, Icon }) => {
+            const on = tool === key && !selKind && !ctx;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => pickTool(key)}
+                aria-pressed={on}
+                className={`flex flex-col items-center gap-1 rounded-[10px] py-2.5 text-[11.5px] transition-colors ${on ? "bg-point text-white" : "text-ink/75 hover:bg-[#f3f2ee] hover:text-ink"}`}
+              >
+                <Icon size={21} strokeWidth={1.6} />
+                <span className="whitespace-nowrap">{l}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* PC: 왼쪽 패널 (도구 내용 / 선택한 요소 설정) */}
+        {panelContent && isDesktop && (
+          <aside className="hidden w-[340px] shrink-0 flex-col border-r border-line bg-white lg:flex">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-4">
+              <h2 className="text-[14px] font-semibold">{panelTitle}</h2>
+              <button type="button" onClick={closePanel} aria-label="패널 닫기" className="rounded-[6px] p-1.5 text-muted hover:bg-tile"><X size={17} /></button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">{panelContent}</div>
+          </aside>
+        )}
+
         {/* 캔버스 영역 */}
-        <div ref={areaRef} className="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden" onPointerDown={(e) => {
-          if (e.target !== e.currentTarget) return;
-          const c = ed.canvasRef.current;
-          c?.discardActiveObject();
-          c?.requestRenderAll();
-        }}>
-          <div className="mb-2 flex items-center gap-4 text-[12.5px]">
-            <span><span className="font-medium text-[#d1347a]">재단</span> {fmtMm(label.widthMm)} x {fmtMm(label.heightMm)} mm</span>
-            <span><span className="font-medium text-[#7b3f98]">작업</span> {fmtMm(workW)} x {fmtMm(workH)} mm</span>
-            <span>{ed.pageIndex + 1} / {ed.pageCount}p</span>
+        <div
+          ref={areaRef}
+          className="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden bg-[radial-gradient(#dcdad3_1px,transparent_1px)] [background-size:18px_18px]"
+          onPointerDown={(e) => {
+            if (e.target !== e.currentTarget) return;
+            const c = ed.canvasRef.current;
+            c?.discardActiveObject();
+            c?.requestRenderAll();
+          }}
+        >
+          {/* PC: 요소를 고르면 캔버스 위에 떠 있는 도구 막대 */}
+          {selKind && (
+            <div className="absolute left-1/2 top-3 z-20 hidden max-w-[calc(100%-24px)] -translate-x-1/2 overflow-x-auto rounded-[12px] border border-line bg-white px-1.5 py-1 shadow-[0_4px_18px_rgba(36,26,24,0.10)] [scrollbar-width:none] lg:flex">
+              <ContextBar ed={ed} ctx={ctx} setCtx={setCtx} />
+            </div>
+          )}
+          <div className="mb-3 flex items-center gap-1.5 text-[12px]">
+            <span className="rounded-[6px] bg-white px-2 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"><span className="font-medium text-[#d1347a]">재단</span> {fmtMm(label.widthMm)} x {fmtMm(label.heightMm)} mm</span>
+            <span className="rounded-[6px] bg-white px-2 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"><span className="font-medium text-[#7b3f98]">작업</span> {fmtMm(workW)} x {fmtMm(workH)} mm</span>
+            <span className="rounded-[6px] bg-white px-2 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">{ed.pageIndex + 1} / {ed.pageCount}p</span>
           </div>
-          <div className="relative shadow-[0_1px_4px_rgba(0,0,0,0.08)]" style={{ width: canvasPx.w, height: canvasPx.h }}>
+          <div className="relative rounded-[2px] shadow-[0_6px_24px_rgba(36,26,24,0.10)]" style={{ width: canvasPx.w, height: canvasPx.h }}>
             <canvas ref={ed.elRef} />
             <Guides label={label} />
             {ed.selection && ed.selection.kind !== "multi" && (
               <div
-                className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#4a4a4a] px-2.5 py-0.5 text-[11px] text-white"
+                className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-[6px] bg-point px-2 py-0.5 text-[11px] text-white"
                 style={{ left: ed.selection.box.left + ed.selection.box.width / 2, top: Math.max(-26, ed.selection.box.top - 30) }}
               >
                 {fmtMm(ed.selection.mm.w)} x {fmtMm(ed.selection.mm.h)} mm
@@ -415,35 +492,28 @@ export function Editor(props: {
             )}
           </div>
           {/* 줌 */}
-          <div className="absolute bottom-3 right-3 flex items-center rounded-full bg-white text-[12px] shadow-sm">
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center rounded-[10px] border border-line bg-white text-[12px] shadow-sm lg:bottom-4">
             <button type="button" className="p-2" aria-label="축소" onClick={() => ed.setZoom(z * 0.85)}><Minus size={14} /></button>
             <span className="w-11 text-center tabular-nums">{Math.round((z / MM_PX) * 100)}%</span>
             <button type="button" className="p-2" aria-label="확대" onClick={() => ed.setZoom(z * 1.15)}><Plus size={14} /></button>
-            <button type="button" className="border-l border-line px-2.5 py-1.5" onClick={fit}>맞춤</button>
+            <button type="button" className="border-l border-line px-2.5 py-1.5" onClick={fit}>화면 맞춤</button>
           </div>
         </div>
 
-        {/* 미리보기: PC 오른쪽 패널 / 모바일 토글 */}
-        <aside
-          className={`${mobilePreview ? "flex" : "hidden"} absolute inset-0 z-20 flex-col overflow-y-auto bg-white p-5 lg:static lg:flex lg:w-[340px] lg:shrink-0 lg:border-l lg:border-line`}
-        >
+        {/* 미리보기: PC 오른쪽 / 모바일 토글 */}
+        <aside className={`${mobilePreview ? "flex" : "hidden"} absolute inset-0 z-30 flex-col overflow-y-auto bg-white p-5 lg:static lg:flex lg:w-[320px] lg:shrink-0 lg:border-l lg:border-line`}>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[14px] font-semibold">미리보기</h2>
+            <h2 className="text-[14px] font-semibold">완성 미리보기</h2>
             <button type="button" className="p-1 lg:hidden" onClick={() => setMobilePreview(false)} aria-label="미리보기 닫기"><X size={18} /></button>
           </div>
           <MockupPreview color={color} labelUrl={previewUrl} label={label} />
           {colors.length > 1 && (
-            <div className="mt-4">
-              <p className="mb-2 text-[12px] text-muted">수건 색상</p>
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-5 border-t border-line pt-4">
+              <p className="mb-2.5 text-[13px] font-medium">수건 색상</p>
+              <div className="flex flex-wrap gap-2.5">
                 {colors.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setColorId(c.id)}
-                    className={`flex flex-col items-center gap-1 text-[11px] ${c.id === colorId ? "text-ink" : "text-muted"}`}
-                  >
-                    <span className={`block size-8 rounded-full border ${c.id === colorId ? "border-ink ring-2 ring-ink/15" : "border-line"}`} style={{ background: c.swatch }} />
+                  <button key={c.id} type="button" onClick={() => setColorId(c.id)} aria-pressed={c.id === colorId} className={`flex flex-col items-center gap-1 text-[11px] ${c.id === colorId ? "text-ink" : "text-muted"}`}>
+                    <span className={`block size-8 rounded-full border ${c.id === colorId ? "border-ink ring-2 ring-point/25" : "border-line"}`} style={{ background: c.swatch }} />
                     {c.isMix ? "mix" : c.name}
                   </button>
                 ))}
@@ -455,32 +525,18 @@ export function Editor(props: {
         </aside>
       </div>
 
-      {/* 바텀시트 + 툴바 */}
-      <div className="relative z-30 shrink-0">
-        {panelOpen && (
-          <div className="absolute bottom-full left-0 right-0 max-h-[46vh] overflow-y-auto rounded-t-[16px] bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:right-[340px]">
-            <button type="button" onClick={() => (ctx ? setCtx(null) : setTool(null))} className="mx-auto block py-2.5" aria-label="패널 닫기">
-              <span className="block h-1 w-10 rounded-full bg-[#d9d9d9]" />
-            </button>
-            <div className="px-4 pb-4">
-              {ctx ? (
-                <ContextPanel ctxKey={ctx} ed={ed} />
-              ) : tool ? (
-                <ToolPanel
-                  tool={tool}
-                  ed={ed}
-                  label={label}
-                  templates={props.templates}
-                  stickers={props.stickers}
-                  photos={photos}
-                  setPhotos={setPhotos}
-                  loggedIn={props.loggedIn}
-                />
-              ) : null}
+      {/* 모바일: 아래 도구 줄 + 패널 */}
+      <div className="relative z-30 shrink-0 lg:hidden">
+        {panelContent && !isDesktop && (
+          <div className="absolute bottom-full left-0 right-0 max-h-[50vh] overflow-y-auto rounded-t-[14px] border-t border-line bg-white shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-white px-4 py-2.5">
+              <h2 className="text-[13.5px] font-semibold">{panelTitle}</h2>
+              <button type="button" onClick={closePanel} aria-label="패널 닫기" className="p-1 text-muted"><X size={17} /></button>
             </div>
+            <div className="px-4 pb-4 pt-3">{panelContent}</div>
           </div>
         )}
-        <nav className="flex h-[74px] items-center overflow-x-auto border-t border-line bg-white px-2 [scrollbar-width:none] lg:justify-center">
+        <nav className="flex h-[70px] items-center overflow-x-auto border-t border-line bg-white px-2 [scrollbar-width:none]">
           {selKind ? (
             <ContextBar ed={ed} ctx={ctx} setCtx={setCtx} />
           ) : (
@@ -488,10 +544,10 @@ export function Editor(props: {
               <button
                 key={key}
                 type="button"
-                onClick={() => setTool(tool === key ? null : key)}
-                className={`flex min-w-[58px] shrink-0 flex-col items-center gap-1 whitespace-nowrap rounded-[10px] px-2 py-1.5 text-[12px] transition-colors ${tool === key ? "bg-point/[0.08] text-point" : "text-ink hover:bg-tile"}`}
+                onClick={() => pickTool(key)}
+                className={`flex min-w-[58px] shrink-0 flex-col items-center gap-1 whitespace-nowrap rounded-[10px] px-2 py-1.5 text-[11.5px] ${tool === key ? "bg-point text-white" : "text-ink/80"}`}
               >
-                <Icon size={21} strokeWidth={1.6} />
+                <Icon size={20} strokeWidth={1.6} />
                 {l}
               </button>
             ))
@@ -571,6 +627,13 @@ export function Editor(props: {
       )}
     </div>
   );
+}
+
+const DESKTOP_MQ = "(min-width: 1024px)";
+function subscribeDesktop(cb: () => void) {
+  const mq = matchMedia(DESKTOP_MQ);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
 }
 
 /** 이 기기(localStorage)에 편집 중인 디자인을 남긴다 */
