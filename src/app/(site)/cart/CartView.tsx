@@ -37,7 +37,7 @@ export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFe
               <input type="checkbox" className="mt-1 size-4 shrink-0 accent-point" checked={selected.includes(l.id)} onChange={() => toggle(l.id)} aria-label={`${l.productName} 선택`} />
               <div className="grid w-24 shrink-0 place-items-center self-start bg-paper p-1.5 md:w-28">
                 {l.fileName ? (
-                  <div className="flex aspect-[65/45] w-full flex-col items-center justify-center text-muted"><FileText size={22} /><span className="mt-1 text-[10px]">PDF</span></div>
+                  <div className="flex aspect-[68/48] w-full flex-col items-center justify-center text-muted"><FileText size={22} /><span className="mt-1 text-[10px]">PDF</span></div>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   l.thumbnail && <img src={l.thumbnail} alt="" className="w-full" />

@@ -23,7 +23,7 @@ export default async function DesignsPage() {
         const p = products.get(d.product_id);
         return (
           <li key={d.id} className="border border-line bg-paper">
-            <div className="grid aspect-[65/45] place-items-center bg-white">
+            <div className="grid aspect-[68/48] place-items-center bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {d.thumbnail_url && <img src={d.thumbnail_url} alt="" className="h-full w-full object-contain" />}
             </div>

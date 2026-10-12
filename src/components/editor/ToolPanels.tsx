@@ -232,7 +232,7 @@ function DesignPanel({ ed, templates }: { ed: EditorApi; templates: EditorTempla
         {list.map((t) => (
           <li key={t.id}>
             <button type="button" onClick={() => ed.applyTemplate(t.doc as DesignDoc)} className="block w-full overflow-hidden rounded-[6px] border border-line bg-white text-left">
-              <div className="grid aspect-[65/45] place-items-center bg-cloud">
+              <div className="grid aspect-[68/48] place-items-center bg-cloud">
                 {thumbs[t.id] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={thumbs[t.id]} alt="" className="h-full w-full object-contain" />
@@ -330,7 +330,7 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
       {q && !q.enabled && <p className="mt-2 text-[12.5px] text-alert">지금은 AI 생성을 사용할 수 없습니다.</p>}
       {q && q.enabled && q.remaining <= 0 && <p className="mt-2 text-[12.5px] text-alert">오늘 무료 생성 횟수를 모두 사용했습니다. 내일 다시 이용할 수 있습니다.</p>}
       {err && <p role="alert" className="mt-2 text-[12.5px] text-alert">{err}</p>}
-      {busy && <div className="mt-3 grid grid-cols-2 gap-2">{[0, 1].map((i) => <div key={i} className="aspect-[65/45] animate-pulse rounded-[6px] bg-cloud" />)}</div>}
+      {busy && <div className="mt-3 grid grid-cols-2 gap-2">{[0, 1].map((i) => <div key={i} className="aspect-[68/48] animate-pulse rounded-[6px] bg-cloud" />)}</div>}
       {!busy && results.length > 0 && (
         <>
           <p className="mt-3 text-[12px] text-muted">마음에 드는 이미지를 누르면 라벨에 들어갑니다.</p>
@@ -339,7 +339,7 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
               <li key={u}>
                 <button type="button" onClick={() => ed.addImage(u, "ai")} className="block w-full overflow-hidden rounded-[6px] border border-line">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={u} alt="AI 생성 이미지" className="aspect-[65/45] w-full object-cover" />
+                  <img src={u} alt="AI 생성 이미지" className="aspect-[68/48] w-full object-cover" />
                 </button>
               </li>
             ))}
