@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { requireUser } from "@/lib/auth";
+import { Loading, usePageData } from "@/lib/page";
 import { MyNav } from "./MyNav";
 
-export default async function MyLayout({ children }: LayoutProps<"/mypage">) {
-  const user = await requireUser("/mypage");
+export default function MyLayout({ children }: { children: ReactNode }) {
+  const { data: user } = usePageData(() => requireUser("/mypage"));
+  if (!user) return <Loading />;
   return (
     <section className="mx-auto w-full max-w-[1080px] px-5 pb-24 pt-12 md:px-10 md:pt-16">
       <div className="flex items-baseline justify-between">

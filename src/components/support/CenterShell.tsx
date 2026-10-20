@@ -1,10 +1,14 @@
+"use client";
+
 import type { ReactNode } from "react";
-import { getSetting } from "@/lib/site";
+import { usePageData } from "@/lib/page";
+import { DEFAULT_SETTINGS, getSetting } from "@/lib/site";
 import { SupportNav } from "./SupportNav";
 
 // Q&A(고객센터) 공통 틀: 왼쪽 메뉴 + 운영 안내, 오른쪽 내용 (2026-10 고객 예시 화면 구성)
-export async function CenterShell({ title, children }: { title: string; children: ReactNode }) {
-  const c = await getSetting("company");
+export function CenterShell({ title, children }: { title: string; children: ReactNode }) {
+  const { data } = usePageData(() => getSetting("company"));
+  const c = data ?? DEFAULT_SETTINGS.company;
   return (
     <section className="mx-auto grid w-full max-w-[1200px] gap-8 px-5 pb-24 pt-10 md:grid-cols-[220px_1fr] md:gap-14 md:px-10 md:pt-16">
       <aside>

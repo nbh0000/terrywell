@@ -1,26 +1,7 @@
-import { getContent, getSetting } from "@/lib/site";
-import { PageTitle } from "../ui";
-import { SiteForm } from "./SiteForm";
+import { SiteClient } from "./SiteClient";
 
 export const metadata = { title: "사이트 설정" };
 
-export default async function AdminSite() {
-  const [company, shipping, products, mixNotice, home, about, customLabel, editorGuide, pdfConsent, legal] = await Promise.all([
-    getSetting("company"),
-    getSetting("shipping"),
-    getSetting("products"),
-    getContent("mixNotice"),
-    getContent("home"),
-    getContent("about"),
-    getContent("customLabel"),
-    getContent("editorGuide"),
-    getContent("pdfConsent"),
-    getContent("legal"),
-  ]);
-  return (
-    <>
-      <PageTitle title="사이트 설정 · 콘텐츠" />
-      <SiteForm initial={{ company, shipping, products, mixNotice, home, about, customLabel, editorGuide, pdfConsent, legal }} />
-    </>
-  );
+export default function AdminSite() {
+  return <SiteClient />;
 }

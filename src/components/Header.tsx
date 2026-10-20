@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { BookOpen, Heart, LogIn, Search, ShoppingBag, User } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { useSession } from "@/lib/page";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
@@ -14,9 +17,18 @@ export const NAV = [
   { href: "/notices", label: "공지사항" },
 ];
 
-export async function Header() {
-  const user = await getCurrentUser();
-  const cartCount = user ? await getDb().count("cart_items", { user_id: user.id }) : 0;
+export function Header() {
+  const session = useSession();
+  const user = session?.user ?? null;
+  const [cartCount, setCartCount] = useState(0);
+  useEffect(() => {
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 로그아웃 상태 동기화
+      setCartCount(0);
+      return;
+    }
+    getDb().count("cart_items", { user_id: user.id }).then(setCartCount).catch(() => setCartCount(0));
+  }, [user]);
 
   const icons = [
     { href: "/search", label: "검색", Icon: Search },

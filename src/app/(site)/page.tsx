@@ -1,13 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { ProductRail, type RailItem } from "@/components/home/ProductRail";
 import { getDb } from "@/lib/db";
 import { kstToday } from "@/lib/kst";
+import { Loading, usePageData } from "@/lib/page";
 import { isNewProduct } from "@/lib/product-badge";
 import { getContent, getSetting } from "@/lib/site";
 
-// 2026-10 고객 요청 배치: 크게 넘어가는 슬라이드 → 제품 바로가기 → 브랜드 소개로 가는 이미지
-export default async function Home() {
+async function loadHome() {
   const db = getDb();
   const [home, { new_days }, products] = await Promise.all([
     getContent("home"),
@@ -40,7 +42,14 @@ export default async function Home() {
       });
     }
   }
+  return { home, slides, items };
+}
 
+// 2026-10 고객 요청 배치: 크게 넘어가는 슬라이드 → 제품 바로가기 → 브랜드 소개로 가는 이미지
+export default function Home() {
+  const { data } = usePageData(loadHome);
+  if (!data) return <Loading className="min-h-[70vh]" />;
+  const { home, slides, items } = data;
   const b = home.brand;
   return (
     <>

@@ -54,3 +54,10 @@ next-env.d.ts
 # GitHub Pages 미리보기 빌드 산출물
 /.next-pages
 /.pages-out
+
+# 카페24 접속 정보
+/cafe24/secrets.txt
+/cafe24/build
+/storage
+/php/uploads
+/php/api/config.php

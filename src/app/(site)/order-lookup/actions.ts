@@ -1,7 +1,6 @@
-"use server";
+// 비회원 주문 조회 (PHP /api/orders/lookup: 주문번호 + 받는 분 연락처가 모두 맞을 때만)
 
-import { getDb } from "@/lib/db";
-import { STATUS_LABEL } from "@/lib/orders";
+import { apiPost } from "@/lib/api";
 
 export type LookupState =
   | {
@@ -19,29 +18,10 @@ export type LookupState =
     }
   | undefined;
 
-const digits = (s: string) => s.replace(/\D/g, "");
-
-// 비회원 주문 조회: 주문번호 + 받는 분 연락처가 모두 맞을 때만 보여 준다
 export async function lookupOrderAction(_: LookupState, fd: FormData): Promise<LookupState> {
-  const no = String(fd.get("order_no") ?? "").trim().slice(0, 40);
-  const phone = digits(String(fd.get("phone") ?? "")).slice(0, 20);
-  if (!no || phone.length < 8) return { error: "주문번호와 연락처를 정확히 입력해 주세요." };
-  const db = getDb({ admin: true });
-  const order = await db.get("orders", { order_no: no });
-  if (!order || order.status === "pending" || digits(String(order.recipient.phone ?? "")) !== phone) {
-    return { error: "일치하는 주문이 없습니다. 주문번호와 연락처를 다시 확인해 주세요." };
+  try {
+    return await apiPost<NonNullable<LookupState>>("orders/lookup", { order_no: String(fd.get("order_no") ?? ""), phone: String(fd.get("phone") ?? "") });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "조회하지 못했습니다." };
   }
-  const items = await db.select("order_items", { where: { order_id: order.id } });
-  return {
-    order: {
-      id: order.id,
-      no: order.order_no,
-      date: new Date(order.created_at).toLocaleDateString("ko-KR"),
-      status: STATUS_LABEL[order.status],
-      tracking: order.tracking_no,
-      total: order.total_amount,
-      key: phone.slice(-4),
-      items: items.map((it) => ({ name: it.product_name, color: it.color_name, quantity: it.quantity, amount: it.line_amount })),
-    },
-  };
 }

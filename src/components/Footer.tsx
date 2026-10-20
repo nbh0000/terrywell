@@ -1,11 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { MessageCircleQuestion } from "lucide-react";
 import { IMAGES } from "@/content/images";
-import { getSetting } from "@/lib/site";
+import { usePageData } from "@/lib/page";
+import { DEFAULT_SETTINGS, getSetting } from "@/lib/site";
 
 // reference/01 시안 푸터: 왼쪽 심볼 로고 + 대표 전화 + 1:1 문의, 오른쪽 사업자 정보 + 인스타그램
-export async function Footer() {
-  const c = await getSetting("company");
+export function Footer() {
+  const { data } = usePageData(() => getSetting("company"));
+  const c = data ?? DEFAULT_SETTINGS.company;
 
   return (
     <footer className="mt-auto border-t border-line bg-paper">

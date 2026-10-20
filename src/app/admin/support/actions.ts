@@ -1,13 +1,10 @@
-"use server";
+// 자주 묻는 질문·1:1 문의 답변 (브라우저 → PHP /api/db, 관리자만)
 
-import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { go } from "@/lib/page";
 
 // 글을 그냥 쓰면 빈 줄 기준으로 문단을 나눈다. HTML 이면 그대로
-function toHtml(body: string) {
+export function toHtml(body: string) {
   if (/<\w+[^>]*>/.test(body)) return body;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
   return body
@@ -17,7 +14,6 @@ function toHtml(body: string) {
 }
 
 export async function saveFaqAction(fd: FormData) {
-  await requireAdmin();
   const db = getDb({ admin: true });
   const id = String(fd.get("id") ?? "");
   const question = String(fd.get("question") ?? "").trim().slice(0, 300);
@@ -30,29 +26,20 @@ export async function saveFaqAction(fd: FormData) {
     sort_order: Number(fd.get("sort_order")) || 0,
   };
   if (id) await db.update("faqs", { id }, row);
-  else await db.insert("faqs", { id: randomUUID(), ...row });
-  revalidatePath("/qna", "layout");
-  revalidatePath("/admin/faqs");
-  redirect("/admin/faqs");
+  else await db.insert("faqs", { id: crypto.randomUUID(), ...row });
+  go("/admin/faqs");
 }
 
 export async function deleteFaqAction(id: string) {
-  await requireAdmin();
   await getDb({ admin: true }).remove("faqs", { id });
-  revalidatePath("/qna", "layout");
-  revalidatePath("/admin/faqs");
 }
 
 export async function answerInquiryAction(fd: FormData) {
-  await requireAdmin();
   const id = String(fd.get("id") ?? "");
   const answer = String(fd.get("answer") ?? "").trim();
   const now = new Date().toISOString();
   await getDb({ admin: true }).update("inquiries", { id }, answer
     ? { answer_html: toHtml(answer.slice(0, 10000)), status: "answered", answered_at: now, updated_at: now }
     : { answer_html: "", status: "waiting", answered_at: null, updated_at: now });
-  revalidatePath("/qna/inquiry", "layout");
-  revalidatePath("/mypage/inquiries");
-  revalidatePath("/admin/inquiries", "layout");
-  redirect(`/admin/inquiries/${id}?saved=1`);
+  go(`/admin/inquiries/${id}?saved=1`);
 }

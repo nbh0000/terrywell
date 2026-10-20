@@ -61,3 +61,16 @@
 - 고객 질문 답: PC 에디터도 PNG·JPG 가능(사진 > 이미지 불러오기/파일 불러오기, 이미 구현). 라벨 크기 변경은 관리자 > 제품 > '라벨 설정 (mm)'.
   결제는 현재 로그인 필수(비회원 결제 없음, 비회원은 주문 조회만) — 비회원 결제는 고객이 원하면 추가.
 - 새 제품 기본 라벨값을 68×48·도련 1.5·안전 3.5 로 맞춤 (관리자 폼 기본값).
+
+## 2026-10-20 (2) 호스팅: Vercel+Supabase → 카페24 뉴아우토반(PHP)
+- 사용자 결정. 고객이 카페24 뉴아우토반 비즈니스(아이디 terrywell, 서버 222.122.39.70, PHP 8.4, MariaDB 10, 일 트래픽 10GB) 결제. Node VPS 를 권했지만 뉴아우토반으로 확정.
+- 구조: 잇담과 같은 "Next 정적 내보내기 + PHP API". 서버 컴포넌트·서버 액션·API 라우트를 모두 없애고, 화면은 브라우저에서 `/api/db`(범용 저장소, 서버가 public/own/admin 규칙으로 권한 강제)와 전용 API(인증·디자인 저장·주문·AI·문의·업로드)를 부른다.
+- 동적 주소(`/products/{slug}` 등)는 `__live.html` 한 장을 빌드하고 `_page.php` 가 골라 준다. 화면은 주소에서 값을 읽는다 (`useRouteId`).
+- 첫 화면 속도: `_page.php` 가 로그인 상태와 공개 표(제품·설정·FAQ 등)를 `window.__TW__` 로 HTML 에 넣어 요청 없이 그린다.
+- 인증: PHP 서명 쿠키(`tw_session`), 비밀번호 bcrypt. 비밀번호 재설정은 PHP mail(). 간편 로그인은 PHP 가 처리 (`/auth/oauth/{p}` → `/auth/callback/{p}`, .htaccess 가 api 로 보냄). 콜백 주소는 바뀌지 않음.
+- 인쇄 파일: sharp·pdf-lib 대신 GD + 순수 PHP. PNG 에 pHYs(300dpi), PDF 는 raw RGB Flate 이미지 한 장(실제 mm), CMYK TIFF 는 **ICC 프로필 없는 단순 변환**(서버에 Imagick 없음). PIL 로 CMYK·300dpi 확인됨.
+- AI: 기본 모델 교체 — OpenAI gpt-image-1.5(중간 품질 1536×1024), Google gemini-nano-banana-2.1(generateContent, 4:3). imagen-4 는 2026-08-17 종료.
+- 저장소: 공개 파일 `www/uploads/<bucket>`, 비공개 `www/_storage/<bucket>`(.htaccess 로 차단, `/api/files` 가 권한 확인 후 내려줌). 로컬 파일 DB(.data/db.json)는 `cafe24/make_data_sql.php` 로 MariaDB 에 옮김. Supabase 코드·마이그레이션·GitHub Pages 미리보기 스크립트 삭제.
+- https: Cloudflare Flexible. .htaccess 의 https 강제는 Cloudflare 뒤에서 http 로 들어온 경우(CF-Visitor)에만 (네임서버 전환 전 http 접속이 막히지 않게).
+- 삭제 보호: 주문에 쓰인 디자인은 서버가 삭제를 거부. 숨긴 제품·템플릿·FAQ 는 비관리자에게 안 보임(서버 필터).
+- 로컬 환경: Apache 8090(DOCROOT=php/, 개발 API) · 8091(DOCROOT=cafe24/build/www, 실서버 구조 확인) · MariaDB 3309. Playwright `cafe24/verify/smoke.py` 로 53개 화면·로그인·클라이언트 이동·관리자 확인.

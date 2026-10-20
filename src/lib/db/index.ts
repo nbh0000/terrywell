@@ -1,8 +1,5 @@
-import "server-only";
-import { dataMode } from "@/lib/config";
 import type { TableName, Tables } from "./types";
-import { localDb } from "./local";
-import { supabaseDb } from "./supabase";
+import { makeHttpDb } from "./http";
 
 export type Where<T extends TableName> = Partial<Tables[T]>;
 
@@ -14,8 +11,8 @@ export interface SelectOptions<T extends TableName> {
 }
 
 /**
- * 로컬(JSON 파일)과 Supabase 를 같은 모양으로 다루는 최소 저장소 인터페이스.
- * 권한 검사는 호출하는 서버 코드에서 한다 (Supabase 모드에서는 RLS 가 한 번 더 막는다).
+ * 저장소 인터페이스. 브라우저에서 PHP /api/db 를 부른다 (카페24 호스팅: 서버는 PHP, 화면은 정적 Next).
+ * 권한 검사는 서버(php/api/_lib/dbapi.php)가 한다.
  */
 export interface Db {
   select<T extends TableName>(table: T, opts?: SelectOptions<T>): Promise<Tables[T][]>;
@@ -27,9 +24,13 @@ export interface Db {
   remove<T extends TableName>(table: T, where: Where<T>): Promise<void>;
 }
 
+const publicDb = makeHttpDb(false);
+const adminDb = makeHttpDb(true);
+
 /**
- * @param admin true 면 Supabase service role 로 RLS 를 우회한다. 서버에서 권한을 확인한 뒤에만 쓴다.
+ * @param admin true 면 공개 스냅샷을 거치지 않고 항상 서버에 묻는다 (관리자 화면: 숨긴 제품·전체 회원 등).
+ *              실제 권한은 서버가 로그인한 회원의 역할로 판단한다.
  */
 export function getDb({ admin = false }: { admin?: boolean } = {}): Db {
-  return dataMode === "supabase" ? supabaseDb(admin) : localDb;
+  return admin ? adminDb : publicDb;
 }

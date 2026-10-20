@@ -1,4 +1,3 @@
-import "server-only";
 import { getDb } from "@/lib/db";
 import { IMAGES } from "@/content/images";
 

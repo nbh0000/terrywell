@@ -1,0 +1,46 @@
+# 테리웰 — 카페24(Apache + PHP) 라우팅
+# 화면은 Next.js 정적 빌드(HTML·JS), 데이터·저장·인증은 /api/index.php 가 맡는다.
+
+Options -Indexes
+DirectoryIndex index.html
+DirectorySlash Off
+AddDefaultCharset utf-8
+AddType image/webp .webp
+AddType font/woff2 .woff2
+AddType image/tiff .tif .tiff
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+
+# 항상 https://terrywell.kr 하나의 주소로. Cloudflare(Flexible) 뒤에서 http 로 들어오면 https 로, www 는 비-www 로 영구 이동.
+# 카페24 서버가 직접 http 로 받는 경우(네임서버 전환 전·점검용 terrywell.cafe24.com)는 그대로 둔다.
+RewriteCond %{HTTP:CF-Visitor} http[^s] [NC]
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# 비밀 설정·내부 코드·비공개 저장소는 밖에서 열 수 없다
+RewriteRule ^api/(_lib/|config\.php|config\.sample\.php) - [F,L]
+RewriteRule ^_storage/ - [F,L]
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
+RewriteRule ^_page\.php$ - [F,L]
+
+# API 와 간편 로그인 주소
+RewriteCond %{REQUEST_URI} !^/api/index\.php
+RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]
+RewriteRule ^auth/(oauth|callback)/([a-z]+)/?$ api/index.php?route=auth/$1/$2 [QSA,L]
+
+# 정적 파일(_next, 이미지, 업로드 등)은 그대로 준다
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# 화면 주소는 _page.php 가 알맞은 HTML 을 골라 최신 데이터·로그인 상태를 붙여 보낸다
+RewriteRule ^(.*)$ _page.php?path=$1 [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+<FilesMatch "\.(js|css|woff2|woff|ttf|otf)$">
+Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+</IfModule>

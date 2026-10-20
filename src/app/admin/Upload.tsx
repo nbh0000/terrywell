@@ -13,7 +13,7 @@ export function UploadButton({
   className = "",
 }: {
   onUploaded: (url: string, name: string) => void;
-  bucket?: "product-images" | "mockups" | "templates";
+  bucket?: "product-images" | "mockups" | "templates" | "stickers" | "fonts";
   accept?: string;
   label?: string;
   className?: string;

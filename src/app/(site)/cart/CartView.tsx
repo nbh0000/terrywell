@@ -8,7 +8,7 @@ import type { CartLine } from "@/lib/cart";
 import { won } from "@/lib/pricing";
 import { removeCartItemsAction, updateCartQtyAction } from "./actions";
 
-export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFee: number }) {
+export function CartView({ lines, shippingFee, onChange }: { lines: CartLine[]; shippingFee: number; onChange: () => void }) {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>(lines.map((l) => l.id));
   const [pending, start] = useTransition();
@@ -17,7 +17,7 @@ export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFe
   const ship = sel.length ? shippingFee : 0;
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  const setQty = (id: string, q: number) => start(async () => { await updateCartQtyAction(id, q); router.refresh(); });
+  const setQty = (id: string, q: number) => start(async () => { await updateCartQtyAction(id, q); onChange(); });
 
   return (
     <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_320px]">
@@ -27,7 +27,7 @@ export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFe
             <input type="checkbox" className="size-4 accent-point" checked={selected.length === lines.length} onChange={(e) => setSelected(e.target.checked ? lines.map((l) => l.id) : [])} />
             전체 선택 ({selected.length}/{lines.length})
           </label>
-          <button type="button" disabled={!selected.length || pending} onClick={() => start(async () => { await removeCartItemsAction(selected); router.refresh(); })} className="text-muted underline disabled:opacity-40">
+          <button type="button" disabled={!selected.length || pending} onClick={() => start(async () => { await removeCartItemsAction(selected); onChange(); })} className="text-muted underline disabled:opacity-40">
             선택 삭제
           </button>
         </div>
@@ -55,7 +55,7 @@ export function CartView({ lines, shippingFee }: { lines: CartLine[]; shippingFe
                       <Link href={`/editor/${l.productSlug}?design=${l.designId}${l.colorId ? `&color=${l.colorId}` : ""}`} className="mt-1 inline-block text-[12.5px] text-point underline">디자인 수정</Link>
                     )}
                   </div>
-                  <button type="button" onClick={() => start(async () => { await removeCartItemsAction([l.id]); router.refresh(); })} className="text-muted" aria-label="삭제"><X size={18} /></button>
+                  <button type="button" onClick={() => start(async () => { await removeCartItemsAction([l.id]); onChange(); })} className="text-muted" aria-label="삭제"><X size={18} /></button>
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div className="flex h-10 items-center border border-line bg-white">

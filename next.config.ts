@@ -1,21 +1,27 @@
 import type { NextConfig } from "next";
 
-// GitHub Pages 미리보기 빌드에서만 /terrywell 아래로 서비스한다 (scripts/export_pages.py)
-const basePath = process.env.NEXT_BASE_PATH || undefined;
+// 카페24(PHP 호스팅) 배포: 화면은 정적 HTML 로 내보내고(output: export), 데이터·저장·인증은 PHP API(/api/*)가 맡는다.
+// 개발 중에는 /api, /uploads, 간편 로그인 주소를 로컬 Apache+PHP(TW_API_ORIGIN, 기본 8090)로 넘긴다. 빌드: python cafe24/build.py
+const isExport = process.env.TW_EXPORT === "1";
+const apiOrigin = process.env.TW_API_ORIGIN ?? "http://localhost:8090";
 
 const nextConfig: NextConfig = {
-  basePath,
-  // 브라우저 코드에서 public 파일 주소를 만들 때 쓴다 (PDF 읽기 워커 등)
-  env: { NEXT_PUBLIC_BASE_PATH: basePath ?? "" },
+  ...(isExport ? { output: "export" as const } : {}),
+  images: { unoptimized: true },
+  env: { NEXT_PUBLIC_BASE_PATH: "" },
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  experimental: {
-    serverActions: {
-      // 라벨 디자인 저장(디자인 JSON + 인쇄용 300dpi PNG + 사진), PDF 업로드(최대 50MB)
-      bodySizeLimit: "60mb",
-    },
-  },
-  // sharp 는 네이티브 모듈이라 번들하지 않는다
-  serverExternalPackages: ["sharp"],
+  ...(isExport
+    ? {}
+    : {
+        async rewrites() {
+          return [
+            { source: "/api/:path*", destination: `${apiOrigin}/api/:path*` },
+            { source: "/uploads/:path*", destination: `${apiOrigin}/uploads/:path*` },
+            { source: "/auth/oauth/:provider", destination: `${apiOrigin}/auth/oauth/:provider` },
+            { source: "/auth/callback/:provider", destination: `${apiOrigin}/auth/callback/:provider` },
+          ];
+        },
+      }),
 };
 
 export default nextConfig;
