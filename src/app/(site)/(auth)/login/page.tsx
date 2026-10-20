@@ -13,10 +13,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const provider = OAUTH_PROVIDERS.find((p) => p.id === sp.provider)?.label.replace(" 로그인", "") ?? "간편";
   const snsNotice =
     sp.sns === "unavailable"
-      ? `${provider} 로그인은 아직 연결 준비 중입니다. 이메일로 로그인해 주세요.`
-      : sp.sns === "error"
-        ? `${provider} 로그인을 마치지 못했습니다. 잠시 후 다시 시도해 주세요.`
-        : null;
+      ? `${provider} 로그인은 아직 연결되지 않았습니다. 이메일로 로그인해 주세요.`
+      : sp.sns === "cancel"
+        ? `${provider} 로그인을 취소했습니다.`
+        : sp.sns === "error"
+          ? `${provider} 로그인을 마치지 못했습니다. 잠시 후 다시 시도해 주세요.`
+          : null;
   return (
     <AuthCard title="로그인">
       <LoginForm next={next} notice={sp.reset ? "비밀번호를 변경했습니다. 새 비밀번호로 로그인해 주세요." : undefined} />

@@ -13,7 +13,8 @@ const DB_FILE = path.join(DATA_DIR, "db.json");
 export interface LocalAuthUser {
   id: string;
   email: string;
-  password_hash: string;
+  password_hash: string; // 간편 로그인으로만 가입했으면 빈 문자열
+  sns?: { provider: "kakao" | "naver" | "google" | "apple"; id: string };
   reset_token?: string;
   reset_expires?: number;
 }

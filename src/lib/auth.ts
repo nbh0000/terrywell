@@ -8,7 +8,9 @@ import { dataMode, siteUrl } from "@/lib/config";
 import { getDb } from "@/lib/db";
 import { loadStore, persist } from "@/lib/db/local";
 import type { Profile } from "@/lib/db/types";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { OAUTH_PROVIDERS } from "@/lib/oauth";
+import type { SnsProfile } from "@/lib/oauth-server";
+import { createAdminClient, createServerSupabase } from "@/lib/supabase/server";
 
 // 인증: Supabase 모드는 Supabase Auth, 로컬 모드는 .data/db.json + 서명 쿠키.
 
@@ -74,7 +76,11 @@ export async function signIn(emailRaw: string, password: string): Promise<AuthRe
   }
   const store = await loadStore();
   const user = store._auth_users.find((u) => u.email === email);
-  if (!user || !verifyPassword(password, user.password_hash)) return { ok: false, error: "이메일 또는 비밀번호가 맞지 않습니다." };
+  if (user && !user.password_hash && user.sns) {
+    const label = OAUTH_PROVIDERS.find((p) => p.id === user.sns!.provider)?.label ?? "간편 로그인";
+    return { ok: false, error: `${label}으로 가입한 계정입니다. 아래 간편 로그인 버튼을 눌러 주세요.` };
+  }
+  if (!user || !user.password_hash || !verifyPassword(password, user.password_hash)) return { ok: false, error: "이메일 또는 비밀번호가 맞지 않습니다." };
   await writeLocalSession(user.id);
   return { ok: true };
 }
@@ -122,6 +128,53 @@ export async function resetPassword(password: string, token?: string): Promise<A
   delete user.reset_token;
   delete user.reset_expires;
   await persist();
+  return { ok: true };
+}
+
+/**
+ * 간편 로그인(카카오·네이버·구글)으로 받은 회원 정보로 로그인한다. 처음이면 회원을 만든다.
+ * 같은 이메일로 이미 가입한 계정이 있으면 그 계정으로 로그인한다 (제공자가 확인한 이메일).
+ * 이메일 제공에 동의하지 않은 경우 {provider}.{id}@sns.terrywell.kr 형식의 내부용 주소를 쓴다.
+ */
+export async function signInWithSns(sns: SnsProfile): Promise<AuthResult> {
+  const email = (sns.email ?? `${sns.provider}.${sns.id}@sns.terrywell.kr`).trim().toLowerCase();
+  const providerLabel = OAUTH_PROVIDERS.find((p) => p.id === sns.provider)?.label.replace(" 로그인", "") ?? "SNS";
+  const name = sns.name || `${providerLabel} 회원`;
+
+  if (dataMode === "supabase") {
+    const admin = createAdminClient();
+    // 이미 있으면 "already registered" 류 오류가 나고, 그대로 그 계정으로 진행한다 (회원 프로필은 DB 트리거가 만든다)
+    const { error: createError } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { name, phone: sns.phone, sns_provider: sns.provider, sns_id: sns.id },
+    });
+    if (createError && createError.code !== "email_exists" && !/already|exist|registered/i.test(createError.message)) {
+      return { ok: false, error: translate(createError.message) };
+    }
+    // 비밀번호 없이 세션을 만들기 위해 매직링크 토큰을 서버에서 바로 검증한다
+    const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+    const tokenHash = link?.properties?.hashed_token;
+    if (linkError || !tokenHash) return { ok: false, error: translate(linkError?.message ?? "토큰 생성 실패") };
+    const supabase = await createServerSupabase();
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+    return error ? { ok: false, error: translate(error.message) } : { ok: true };
+  }
+
+  const store = await loadStore();
+  let user =
+    store._auth_users.find((u) => u.sns?.provider === sns.provider && u.sns.id === sns.id) ??
+    store._auth_users.find((u) => u.email === email);
+  if (!user) {
+    user = { id: randomUUID(), email, password_hash: "", sns: { provider: sns.provider, id: sns.id } };
+    store._auth_users.push(user);
+    await persist();
+    await getDb().insert("profiles", { id: user.id, email, name, phone: sns.phone, role: "customer", company_name: "", business_number: "" });
+  } else if (!user.sns) {
+    user.sns = { provider: sns.provider, id: sns.id };
+    await persist();
+  }
+  await writeLocalSession(user.id);
   return { ok: true };
 }
 
