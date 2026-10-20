@@ -2,7 +2,9 @@
   python cafe24/verify/smoke.py [base_url]
 """
 
+import io
 import json
+import re
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -21,7 +23,14 @@ ADMIN = ["/admin", "/admin/products", "/admin/products/new", "/admin/orders", "/
 def main() -> None:
     report = []
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        import re as _re
+        args = []
+        live = "--live" in sys.argv
+        if live:
+            sec = dict(l.split("=", 1) for l in io.open("C:/Users/pc/terrywell/cafe24/secrets.txt", encoding="utf-8").read().splitlines() if "=" in l and not l.startswith("#"))
+            host = _re.sub(r"^https?://", "", BASE).split("/")[0]
+            args.append(f"--host-resolver-rules=MAP {host} {sec['FTP_IP']}")
+        browser = p.chromium.launch(args=args)
         ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         page = ctx.new_page()
         errors: list[str] = []
@@ -52,13 +61,13 @@ def main() -> None:
             for b in bad[:4]: print("     BAD", b[:220], flush=True)
             return text
 
-        for path in ([] if "--admin-only" in sys.argv else PAGES):
+        for path in ([] if "--admin-only" in sys.argv else (PAGES[:6] + ["/login", "/editor/lollipop-stripe-towel"] if live else PAGES)):
             visit(path)
         if "--admin-only" in sys.argv:
             PAGES.clear()
 
         # 로그인 (로컬 테스트 회원)
-        if "--admin-only" in sys.argv:
+        if "--admin-only" in sys.argv or live:
             admin_part(page, visit, report)
             browser.close()
             return
@@ -104,9 +113,13 @@ def admin_part(page, visit, report):
         pass
     page.goto(BASE + "/login?next=/admin", wait_until="networkidle")
     import re, io
-    login = io.open("C:/Users/pc/terrywell/.data/admin-login.txt", encoding="utf-8").read()
-    email = re.search(r"email:\s*(\S+)", login).group(1)
-    pw = re.search(r"password:\s*(\S+)", login).group(1)
+    if "--live" in sys.argv:
+        sec = dict(l.split("=", 1) for l in io.open("C:/Users/pc/terrywell/cafe24/secrets.txt", encoding="utf-8").read().splitlines() if "=" in l and not l.startswith("#"))
+        email, pw = sec["ADMIN_EMAIL"], sec["ADMIN_PASSWORD"]
+    else:
+        login = io.open("C:/Users/pc/terrywell/.data/admin-login.txt", encoding="utf-8").read()
+        email = re.search(r"email:\s*(\S+)", login).group(1)
+        pw = re.search(r"password:\s*(\S+)", login).group(1)
     page.fill('input[name="email"]', email)
     page.fill('input[name="password"]', pw)
     page.click('main form button[type="submit"]')
