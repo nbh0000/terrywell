@@ -74,3 +74,10 @@
 - https: Cloudflare Flexible. .htaccess 의 https 강제는 Cloudflare 뒤에서 http 로 들어온 경우(CF-Visitor)에만 (네임서버 전환 전 http 접속이 막히지 않게).
 - 삭제 보호: 주문에 쓰인 디자인은 서버가 삭제를 거부. 숨긴 제품·템플릿·FAQ 는 비관리자에게 안 보임(서버 필터).
 - 로컬 환경: Apache 8090(DOCROOT=php/, 개발 API) · 8091(DOCROOT=cafe24/build/www, 실서버 구조 확인) · MariaDB 3309. Playwright `cafe24/verify/smoke.py` 로 53개 화면·로그인·클라이언트 이동·관리자 확인.
+
+## 2026-10-23 고객 3차 회신 (네이버 키·Gemini 키, AI 채팅식 요청)
+- 네이버 간편 로그인 키 반영 (secrets.txt → config.php). 운영에서 카카오·네이버·구글 모두 각 사 로그인 화면까지 확인. 구글은 앱 게시 전이라 테스트 사용자만 로그인 가능.
+- AI: 고객이 "GPT처럼 글 + 이미지 둘 다" 선택 → 에디터 AI 패널을 채팅식으로 변경. 글 + 참고 사진(최대 3장, 1536px 로 줄여 보냄) + 이전 결과 "이어서 고치기"(본인 ai-images 만 허용). 보낼 때마다 생성 1회·이미지 1장(AI_IMAGES_PER_REQUEST=1, 고객 안내 "1건당 1생성"). 첨부 사진은 google(nano-banana) 만 쓰고 openai·mock 은 글만.
+- 운영 AI_PROVIDER=google, 모델 gemini-nano-banana-2.1 (키로 모델 목록 조회해 존재 확인, 실제 생성 호출은 아직 안 함).
+- 관리자 > 회원 관리에 삭제(탈퇴 처리) 추가: 로그인 계정·회원 정보·찜·장바구니·1:1 문의(첨부 포함)·AI 기록/이미지·주문에 안 쓰인 디자인 삭제. 주문과 주문에 쓰인 디자인은 전자상거래법 보관(5년) 때문에 남김. 관리자 계정은 삭제 불가.
+- deploy.py 에 `config` 단계 추가 (키만 바뀌었을 때 config.php 만 올림). 운영 테스트 회원 test@terrywell.kr (비밀번호 secrets.txt TEST_PASSWORD).

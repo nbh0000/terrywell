@@ -5,6 +5,7 @@
   python cafe24/deploy.py backend     PHP(API·.htaccess·_page.php)·config.php 를 올리고 DB 테이블·기본 데이터·관리자 계정을 만든다
   python cafe24/deploy.py site        정적 빌드(실서버 주소) → 전체 업로드, 지난 배포에서 사라진 파일 정리
   python cafe24/deploy.py php         PHP 코드만 다시 올린다 (DB 그대로)
+  python cafe24/deploy.py config      secrets.txt 로 api/config.php 만 다시 만든다 (키 추가·변경 시)
   python cafe24/deploy.py check       실서버 /api/health 와 첫 화면 확인
 이후 업데이트는 보통 `site` (PHP 를 고쳤으면 `php` 도).
 서버의 uploads/, _storage/, api/config.php 는 지우거나 덮어쓰지 않는다.
@@ -182,6 +183,13 @@ def php() -> None:
     print(f"  PHP {len(files)}개 업로드")
 
 
+def config() -> None:
+    ftp = connect()
+    upload_bytes(ftp, production_config(), "api/config.php", set())
+    ftp.quit()
+    print("  config.php 업로드")
+
+
 def backend() -> None:
     ftp = connect()
     made: set[str] = set()
@@ -250,7 +258,7 @@ def check() -> None:
 
 
 if __name__ == "__main__":
-    steps = {"preflight": preflight, "backend": backend, "php": php, "site": site, "check": check}
+    steps = {"preflight": preflight, "backend": backend, "php": php, "config": config, "site": site, "check": check}
     if len(sys.argv) < 2 or sys.argv[1] not in steps:
         raise SystemExit(__doc__)
     steps[sys.argv[1]]()

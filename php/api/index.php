@@ -119,6 +119,11 @@ try {
             require_once __DIR__ . '/_lib/support.php';
             json_out(create_inquiry($u));
         }
+        case 'POST admin/members/delete': {
+            $admin = require_admin();
+            require_once __DIR__ . '/_lib/support.php';
+            json_out(admin_delete_member($admin, str_(request_json()['id'] ?? '', 191)));
+        }
         case 'POST upload': {
             require_admin();
             require_once __DIR__ . '/_lib/support.php';

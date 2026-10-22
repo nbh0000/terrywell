@@ -262,13 +262,24 @@ function useAiMe() {
   return [me, setMe] as const;
 }
 
+type AiTurn = { prompt: string; style: string | null; refs: string[]; base: string | null; images?: string[]; error?: string };
+
+/** 채팅식 AI 패널: 글 + 사진 첨부로 요청하고, 결과를 골라 이어서 고칠 수 있다. 요청 1번 = 생성 1회 */
 function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; loggedIn: boolean }) {
   const [me, setMe] = useAiMe();
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState<string | null>(null);
+  const [refs, setRefs] = useState<string[]>([]);
+  const [base, setBase] = useState<string | null>(null);
+  const [turns, setTurns] = useState<AiTurn[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [results, setResults] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "nearest" });
+  }, [turns, busy]);
 
   if (!loggedIn || me?.loggedIn === false) {
     return (
@@ -283,21 +294,43 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
   const styles = q?.styles ?? [];
   const disabled = busy || !q || !q.enabled || q.remaining <= 0 || prompt.trim().length < 2;
 
-  async function generate() {
+  async function attach(files: FileList | null) {
+    if (!files) return;
+    setErr(null);
+    const room = 3 - refs.length;
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, room);
+    if (files.length > room) setErr("사진은 한 번에 3장까지 넣을 수 있습니다.");
+    try {
+      const urls = await Promise.all(list.map((f) => downscale(f, 1536)));
+      setRefs((r) => [...r, ...urls].slice(0, 3));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "사진을 읽지 못했습니다.");
+    }
+  }
+
+  async function send() {
+    if (disabled) return;
+    const turn: AiTurn = { prompt: prompt.trim(), style, refs, base };
+    const history = turns.map((t) => t.prompt);
+    setTurns((t) => [...t, turn]);
+    setPrompt("");
+    setRefs([]);
     setBusy(true);
     setErr(null);
+    const done = (patch: Partial<AiTurn>) => setTurns((t) => t.map((x) => (x === turn ? { ...x, ...patch } : x)));
     try {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, style: style ?? "", aspect: { w: label.widthMm, h: label.heightMm } }),
+        body: JSON.stringify({ prompt: turn.prompt, style: style ?? "", images: turn.refs, base: turn.base ?? "", history, aspect: { w: label.widthMm, h: label.heightMm } }),
       });
       const data = await res.json();
       if (data.quota) setMe((m) => (m ? { ...m, quota: data.quota, images: [...(data.images ?? []), ...(m.images ?? [])] } : m));
       if (!res.ok) throw new Error(data.error ?? "생성하지 못했습니다.");
-      setResults(data.images);
+      done({ images: data.images });
+      setBase(data.images?.[0] ?? null);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "생성하지 못했습니다.");
+      done({ error: e instanceof Error ? e.message : "생성하지 못했습니다." });
     } finally {
       setBusy(false);
     }
@@ -305,47 +338,105 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
 
   return (
     <div>
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        maxLength={500}
-        rows={2}
-        placeholder="예) 레몬과 잎사귀, 파스텔 톤"
-        className="w-full resize-none rounded-[8px] border border-line p-3 text-[14px] outline-none focus:border-ink/50"
-        aria-label="만들고 싶은 그림"
-      />
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      {turns.length === 0 && (
+        <p className="text-[12.5px] leading-relaxed text-muted">
+          만들고 싶은 그림을 글로 적고, 참고할 사진이 있으면 함께 넣습니다. 결과가 나오면 이어서 &ldquo;배경을 더 밝게&rdquo;처럼 고칠 수 있습니다.
+        </p>
+      )}
+      {turns.length > 0 && (
+        <ol className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
+          {turns.map((t, i) => (
+            <li key={i} className="space-y-1.5">
+              <div className="ml-6 rounded-[8px] bg-cloud px-3 py-2 text-[13.5px]">
+                {t.base && <span className="mb-1 block text-[11.5px] text-muted">선택한 이미지를 고치는 요청</span>}
+                {t.prompt}
+                {t.style && <span className="ml-1 text-[12px] text-muted">· {t.style}</span>}
+                {t.refs.length > 0 && (
+                  <span className="mt-1.5 flex gap-1.5">
+                    {t.refs.map((u, k) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={k} src={u} alt="첨부한 사진" className="h-12 w-12 rounded-[4px] object-cover" />
+                    ))}
+                  </span>
+                )}
+              </div>
+              {t.error && <p role="alert" className="mr-6 text-[12.5px] text-alert">{t.error}</p>}
+              {t.images && (
+                <ul className="mr-6 grid grid-cols-2 gap-2">
+                  {t.images.map((u) => (
+                    <li key={u} className="overflow-hidden rounded-[6px] border border-line">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={u} alt="AI 생성 이미지" className="aspect-[68/48] w-full object-cover" />
+                      <span className="grid grid-cols-2 border-t border-line text-[12px]">
+                        <button type="button" onClick={() => ed.addImage(u, "ai")} className="py-1.5 hover:bg-cloud">라벨에 넣기</button>
+                        <button type="button" onClick={() => setBase(base === u ? null : u)} className={`border-l border-line py-1.5 ${base === u ? "bg-ink text-white" : "hover:bg-cloud"}`}>
+                          {base === u ? "고치는 중" : "이어서 고치기"}
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+          {busy && <li className="mr-6 aspect-[68/48] w-1/2 animate-pulse rounded-[6px] bg-cloud" aria-label="만드는 중" />}
+          <li ref={endRef} aria-hidden className="h-0" />
+        </ol>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
         {styles.map((s) => (
-          <button key={s} type="button" onClick={() => setStyle(style === s ? null : s)} className={`rounded-full border px-3 py-1 text-[13px] ${style === s ? "border-ink bg-ink text-white" : "border-line"}`}>
+          <button key={s} type="button" onClick={() => setStyle(style === s ? null : s)} className={`rounded-[6px] border px-2.5 py-1 text-[13px] ${style === s ? "border-ink bg-ink text-white" : "border-line"}`}>
             {s}
           </button>
         ))}
       </div>
-      <div className="mt-3 flex items-center gap-3">
-        <button type="button" disabled={disabled} onClick={generate} className="h-11 flex-1 rounded-[8px] bg-ink text-[15px] text-white disabled:opacity-40">
-          {busy ? "만드는 중…" : "생성하기"}
+      {(refs.length > 0 || base) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {base && (
+            <span className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={base} alt="이어서 고칠 이미지" className="h-12 w-16 rounded-[4px] border border-ink object-cover" />
+              <button type="button" onClick={() => setBase(null)} className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-ink text-[11px] text-white" aria-label="이어서 고치기 취소">×</button>
+            </span>
+          )}
+          {refs.map((u, i) => (
+            <span key={i} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="첨부한 사진" className="h-12 w-12 rounded-[4px] border border-line object-cover" />
+              <button type="button" onClick={() => setRefs((r) => r.filter((_, k) => k !== i))} className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-ink text-[11px] text-white" aria-label="사진 빼기">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mt-2 flex items-end gap-2">
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy || refs.length >= 3} className="grid h-11 w-11 shrink-0 place-items-center rounded-[8px] border border-line disabled:opacity-40" aria-label="참고 사진 넣기" title="참고 사진 넣기 (3장까지)">
+          <ImagePlus size={18} />
         </button>
-        {q && <span className="shrink-0 text-[12.5px] text-muted">오늘 남은 무료 생성 {q.remaining}/{q.limit}회</span>}
+        <input ref={fileRef} type="file" accept={ACCEPT_IMAGES} multiple hidden onChange={(e) => { attach(e.target.files); e.target.value = ""; }} />
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          maxLength={500}
+          rows={2}
+          placeholder={base ? "예) 배경을 더 밝게, 잎사귀는 빼고" : "예) 레몬과 잎사귀, 파스텔 톤"}
+          className="min-w-0 flex-1 resize-none rounded-[8px] border border-line p-2.5 text-[14px] outline-none focus:border-ink/50"
+          aria-label="만들고 싶은 그림"
+        />
+        <button type="button" disabled={disabled} onClick={send} className="h-11 shrink-0 rounded-[8px] bg-ink px-4 text-[14px] text-white disabled:opacity-40">
+          {busy ? "만드는 중" : "보내기"}
+        </button>
       </div>
+      {q && <p className="mt-1.5 text-right text-[12px] text-muted">오늘 남은 무료 생성 {q.remaining}/{q.limit}회 · 보낼 때마다 1회</p>}
       {q && !q.enabled && <p className="mt-2 text-[12.5px] text-alert">지금은 AI 생성을 사용할 수 없습니다.</p>}
       {q && q.enabled && q.remaining <= 0 && <p className="mt-2 text-[12.5px] text-alert">오늘 무료 생성 횟수를 모두 사용했습니다. 내일 다시 이용할 수 있습니다.</p>}
       {err && <p role="alert" className="mt-2 text-[12.5px] text-alert">{err}</p>}
-      {busy && <div className="mt-3 grid grid-cols-2 gap-2">{[0, 1].map((i) => <div key={i} className="aspect-[68/48] animate-pulse rounded-[6px] bg-cloud" />)}</div>}
-      {!busy && results.length > 0 && (
-        <>
-          <p className="mt-3 text-[12px] text-muted">마음에 드는 이미지를 누르면 라벨에 들어갑니다.</p>
-          <ul className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
-            {results.map((u) => (
-              <li key={u}>
-                <button type="button" onClick={() => ed.addImage(u, "ai")} className="block w-full overflow-hidden rounded-[6px] border border-line">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={u} alt="AI 생성 이미지" className="aspect-[68/48] w-full object-cover" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
     </div>
   );
 }

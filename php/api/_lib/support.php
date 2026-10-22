@@ -98,3 +98,46 @@ function admin_upload(): array
     $url = move_upload_to($bucket, "$folder/" . uuid4() . ".$ext", (string) $f['tmp_name']);
     return ['ok' => true, 'url' => $url, 'name' => (string) $f['name']];
 }
+
+/**
+ * 관리자 회원 삭제(탈퇴 처리). 로그인 계정·회원 정보·찜·장바구니·문의·AI 이미지와 주문에 안 쓰인 디자인을 지운다.
+ * 주문(결제·배송 기록)과 주문에 쓰인 디자인 파일은 전자상거래법 보관 의무(5년) 때문에 남긴다.
+ */
+function admin_delete_member(array $admin, string $id): array
+{
+    $p = db_get('profiles', ['id' => $id]);
+    if (!$p) return ['ok' => false, 'error' => '회원을 찾지 못했습니다.'];
+    if ($id === $admin['id']) return ['ok' => false, 'error' => '본인 계정은 삭제할 수 없습니다.'];
+    if (($p['role'] ?? '') === 'admin') return ['ok' => false, 'error' => '관리자 계정은 삭제할 수 없습니다.'];
+    $orderIds = array_column(rows('SELECT id FROM orders WHERE user_id = ?', [$id]), 'id');
+    $used = ['design' => [], 'upload' => []];
+    if ($orderIds) {
+        $in = implode(',', array_fill(0, count($orderIds), '?'));
+        foreach (rows("SELECT design_id, upload_id FROM order_items WHERE order_id IN ($in)", $orderIds) as $r) {
+            if ($r['design_id']) $used['design'][] = $r['design_id'];
+            if ($r['upload_id']) $used['upload'][] = $r['upload_id'];
+        }
+    }
+    $designs = rows('SELECT id FROM designs WHERE user_id = ?', [$id]);
+    $uploads = rows('SELECT id, storage_path FROM design_uploads WHERE user_id = ?', [$id]);
+    $attached = [];
+    foreach (rows('SELECT attachments FROM inquiries WHERE user_id = ?', [$id]) as $r) {
+        foreach (json_decode((string) $r['attachments'], true) ?: [] as $a) if (!empty($a['path'])) $attached[] = (string) $a['path'];
+    }
+    transaction(function () use ($id, $designs, $uploads, $used) {
+        foreach (['wishlists', 'cart_items', 'inquiries', 'ai_generations'] as $t) run("DELETE FROM `$t` WHERE user_id = ?", [$id]);
+        foreach ($designs as $d) if (!in_array($d['id'], $used['design'], true)) run('DELETE FROM designs WHERE id = ?', [$d['id']]);
+        foreach ($uploads as $u) if (!in_array($u['id'], $used['upload'], true)) run('DELETE FROM design_uploads WHERE id = ?', [$u['id']]);
+        run('DELETE FROM auth_users WHERE id = ?', [$id]);
+        run('DELETE FROM profiles WHERE id = ?', [$id]);
+    });
+    try {
+        foreach ($designs as $d) if (!in_array($d['id'], $used['design'], true)) remove_files('designs', "$id/{$d['id']}");
+        foreach ($uploads as $u) if (!in_array($u['id'], $used['upload'], true) && $u['storage_path']) remove_files('uploads', $u['storage_path']);
+        foreach ($attached as $path) remove_files('uploads', $path);
+        remove_files('ai-images', $id);
+    } catch (Throwable $e) {
+        log_error('member-delete-files', $e);
+    }
+    return ['ok' => true, 'keptOrders' => count($orderIds)];
+}

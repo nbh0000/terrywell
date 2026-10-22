@@ -1,5 +1,6 @@
 <?php
 // AI 이미지 생성 (src/app/api/ai/generate/route.ts + src/lib/ai). 서버에서만 키를 쓴다.
+// 에디터 AI 패널은 채팅식: 글 + 첨부 사진 + 이전 결과(이어서 고치기)를 함께 보낸다.
 // 제공자: mock(GD 그림) · openai(gpt-image-1.5) · google(gemini-nano-banana-2.1). 하루 무료 횟수는 ai_generations 로 센다.
 
 declare(strict_types=1);
@@ -28,18 +29,57 @@ function ai_cost_per_image(): int
     return match (ai_provider_name()) { 'openai' => 70, 'google' => 47, default => 0 };
 }
 
-function build_prompt(string $prompt, string $style): string
+function build_prompt(string $prompt, string $style, array $history = [], bool $hasBase = false, int $refCount = 0): string
 {
     $s = $style !== '' ? "Style: $style. " : '';
-    return "{$s}Design for a small woven towel label, clean composition, no text, no watermark, print-ready illustration. $prompt";
+    $ctx = '';
+    if ($history) $ctx .= 'Earlier requests in this conversation: ' . implode(' / ', $history) . '. ';
+    if ($hasBase) $ctx .= 'The first attached image is the current design: keep it and apply the new request to it. ';
+    if ($refCount > 0) $ctx .= ($hasBase ? 'The other attached images' : 'The attached images') . ' are references from the customer: follow their subject, shapes and colors. ';
+    return "{$s}Design for a small woven towel label, clean composition, no text, no watermark, print-ready illustration. {$ctx}Request: $prompt";
 }
 
-/** @return string[] PNG 바이트 목록 */
-function ai_generate(string $prompt, string $style, int $count): array
+/**
+ * 채팅 입력: 고객이 첨부한 사진(data URL, 최대 3장)과 이어서 고칠 이전 결과(본인 ai-images 주소).
+ * @return array{base: ?array{mime: string, bytes: string}, refs: list<array{mime: string, bytes: string}>}
+ */
+function ai_inputs(array $body, string $userId): array
+{
+    $img = function (string $bytes): array {
+        $info = @getimagesizefromstring($bytes);
+        if (!$info || !in_array($info['mime'], ['image/png', 'image/jpeg', 'image/webp', 'image/gif'], true)) fail('사진은 JPG·PNG·WEBP·GIF 만 넣을 수 있습니다.');
+        if (strlen($bytes) > 7 * 1024 * 1024) fail('사진 한 장은 7MB 까지 넣을 수 있습니다.');
+        return ['mime' => $info['mime'], 'bytes' => $bytes];
+    };
+    $refs = [];
+    foreach (array_slice(is_array($body['images'] ?? null) ? $body['images'] : [], 0, 3) as $d) {
+        try {
+            $refs[] = $img(data_url_bytes((string) $d));
+        } catch (InvalidArgumentException) {
+            fail('사진을 읽지 못했습니다.');
+        }
+    }
+    $base = null;
+    $prefix = "/uploads/ai-images/$userId/";
+    $b = (string) ($body['base'] ?? '');
+    if ($b !== '') {
+        if (!str_starts_with($b, $prefix) || !preg_match('#^[a-z0-9-]+\.png$#i', substr($b, strlen($prefix)))) fail('이어서 고칠 이미지를 찾지 못했습니다.');
+        $full = storage_path('ai-images', substr($b, strlen('/uploads/ai-images/')));
+        if (!is_file($full)) fail('이어서 고칠 이미지를 찾지 못했습니다.');
+        $base = $img((string) file_get_contents($full));
+    }
+    return ['base' => $base, 'refs' => $refs];
+}
+
+/**
+ * @return string[] PNG 바이트 목록
+ * 첨부 사진·이전 결과는 google 만 쓴다 (openai·mock 은 글만).
+ */
+function ai_generate(string $prompt, string $style, int $count, array $history = [], array $inputs = ['base' => null, 'refs' => []]): array
 {
     return match (ai_provider_name()) {
-        'openai' => ai_openai($prompt, $style, $count),
-        'google' => ai_google($prompt, $style, $count),
+        'openai' => ai_openai(build_prompt($prompt, $style, $history), $count),
+        'google' => ai_google($prompt, $style, $count, $history, $inputs),
         default => ai_mock($prompt, $style, $count),
     };
 }
@@ -97,12 +137,12 @@ function ai_http_json(string $url, array $headers, array $body, int $timeout = 1
     return is_array($json) ? $json : [];
 }
 
-function ai_openai(string $prompt, string $style, int $count): array
+function ai_openai(string $fullPrompt, int $count): array
 {
     $key = (string) cfg('openai_api_key', '');
     if ($key === '') throw new RuntimeException('OPENAI 키가 설정되지 않았습니다.');
     $json = ai_http_json('https://api.openai.com/v1/images/generations', ["Authorization: Bearer $key"], [
-        'model' => (string) cfg('openai_image_model', 'gpt-image-1.5'), 'prompt' => build_prompt($prompt, $style), 'size' => '1536x1024', 'quality' => 'medium', 'n' => $count,
+        'model' => (string) cfg('openai_image_model', 'gpt-image-1.5'), 'prompt' => $fullPrompt, 'size' => '1536x1024', 'quality' => 'medium', 'n' => $count,
     ]);
     $out = [];
     foreach ($json['data'] ?? [] as $d) {
@@ -113,15 +153,18 @@ function ai_openai(string $prompt, string $style, int $count): array
 }
 
 /** Gemini 이미지 생성(generateContent). 장수만큼 호출한다 */
-function ai_google(string $prompt, string $style, int $count): array
+function ai_google(string $prompt, string $style, int $count, array $history, array $inputs): array
 {
+    $images = array_values(array_filter([$inputs['base'], ...$inputs['refs']]));
+    $parts = [['text' => build_prompt($prompt, $style, $history, $inputs['base'] !== null, count($inputs['refs']))]];
+    foreach ($images as $im) $parts[] = ['inlineData' => ['mimeType' => $im['mime'], 'data' => base64_encode($im['bytes'])]];
     $key = (string) cfg('google_api_key', '');
     if ($key === '') throw new RuntimeException('GOOGLE 키가 설정되지 않았습니다.');
     $model = (string) cfg('google_image_model', 'gemini-nano-banana-2.1');
     $out = [];
     for ($i = 0; $i < $count; $i++) {
         $json = ai_http_json("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent", ["x-goog-api-key: $key"], [
-            'contents' => [['parts' => [['text' => build_prompt($prompt, $style)]]]],
+            'contents' => [['role' => 'user', 'parts' => $parts]],
             'generationConfig' => ['responseModalities' => ['IMAGE'], 'imageConfig' => ['aspectRatio' => '4:3']],
         ]);
         foreach ($json['candidates'][0]['content']['parts'] ?? [] as $part) {
@@ -151,6 +194,12 @@ function handle_ai_generate(array $user): never
     $prompt = mb_substr(trim((string) ($body['prompt'] ?? '')), 0, 500);
     $style = mb_substr(trim((string) ($body['style'] ?? '')), 0, 30);
     if (mb_strlen($prompt) < 2) fail('만들고 싶은 그림을 입력해 주세요.');
+    $history = [];
+    foreach (array_slice(is_array($body['history'] ?? null) ? $body['history'] : [], -6) as $h) {
+        $h = mb_substr(trim((string) $h), 0, 300);
+        if ($h !== '') $history[] = $h;
+    }
+    $inputs = ai_inputs($body, $user['id']);
     $lock = ai_lock($user['id']);
     $quota = ai_quota($user['id']);
     if (!$quota['enabled']) fail('지금은 AI 생성을 사용할 수 없습니다.', 403);
@@ -159,7 +208,7 @@ function handle_ai_generate(array $user): never
     $id = uuid4();
     $provider = ai_provider_name();
     try {
-        $images = ai_generate($prompt, $style, $count);
+        $images = ai_generate($prompt, $style, $count, $history, $inputs);
         $urls = [];
         foreach ($images as $i => $bytes) $urls[] = put_file('ai-images', "{$user['id']}/$id-$i.png", $bytes);
         db_insert('ai_generations', ['id' => $id, 'user_id' => $user['id'], 'prompt' => $prompt, 'style' => $style, 'provider' => $provider, 'result_paths' => $urls, 'success' => true, 'error' => null, 'cost_estimate' => ai_cost_per_image() * count($urls), 'kst_date' => kst_date()]);
