@@ -74,7 +74,8 @@ function resolve(string $root, string $path): ?array
     for ($i = count($segs) - 1; $i >= 1; $i--) {
         if (str_starts_with($segs[$i], '__next.')) continue;
         $try = $segs;
-        $try[$i] = LIVE;
+        // products/abc.txt 처럼 마지막 조각에 .txt 가 붙어 있으면 __live.txt 로 바꾼다
+        $try[$i] = $isTxt && $i === count($segs) - 1 && str_ends_with($segs[$i], '.txt') ? LIVE . '.txt' : LIVE;
         $candidate = implode('/', $try);
         if ($isTxt) {
             if (is_file("$root/$candidate")) return ['file', "$root/$candidate"];
