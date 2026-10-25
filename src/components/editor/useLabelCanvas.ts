@@ -269,14 +269,19 @@ export function useLabelCanvas(label: LabelSpec, initialPages: unknown[] | null,
         updateSelection();
         return;
       }
-      const max = kind === "sticker" ? Math.min(trimW, trimH) * 0.35 : Math.min(trimW, trimH) * 0.8;
-      img.scale(max / Math.max(img.width, img.height));
+      if (kind === "ai") {
+        // AI 시안은 라벨 전체 그림 → 작업 크기(도련 포함)를 꽉 채운다
+        img.scale(Math.max((workW * K) / img.width, (workH * K) / img.height));
+      } else {
+        const max = kind === "sticker" ? Math.min(trimW, trimH) * 0.35 : Math.min(trimW, trimH) * 0.8;
+        img.scale(max / Math.max(img.width, img.height));
+      }
       img.set(center());
       setMeta(img, { kind });
       place(img);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [place, trimW, trimH, updateSelection],
+    [place, trimW, trimH, workW, workH, updateSelection],
   );
 
   const addSvgSticker = useCallback(

@@ -36,7 +36,12 @@ function build_prompt(string $prompt, string $style, array $history = [], bool $
     if ($history) $ctx .= 'Earlier requests in this conversation: ' . implode(' / ', $history) . '. ';
     if ($hasBase) $ctx .= 'The first attached image is the current design: keep it and apply the new request to it. ';
     if ($refCount > 0) $ctx .= ($hasBase ? 'The other attached images' : 'The attached images') . ' are references from the customer: follow their subject, shapes and colors. ';
-    return "{$s}Design for a small woven towel label, clean composition, no text, no watermark, print-ready illustration. {$ctx}Request: $prompt";
+    // 수건·라벨 사진(목업)이 아니라 라벨에 인쇄될 평면 그림만 받는다. 에디터 미리보기가 수건에 붙여 보여 준다
+    return "Create only the flat 2D artwork that will be printed on a towel label: the print file itself, not a photo of it. "
+        . "Front view, flat graphic, fills the whole frame, plain solid background, crisp clean edges, print-ready. "
+        . "Do not show a towel, fabric, terry texture, a label tag, stitching, a mockup, a product photo, perspective, 3D, shadows or lighting. "
+        . "No watermark. Do not add any text unless the request asks for specific text. "
+        . "{$s}{$ctx}Request: $prompt";
 }
 
 /**
