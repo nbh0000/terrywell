@@ -40,7 +40,7 @@ function build_prompt(string $prompt, string $style, array $history = [], bool $
 }
 
 /**
- * 채팅 입력: 고객이 첨부한 사진(data URL, 최대 3장)과 이어서 고칠 이전 결과(본인 ai-images 주소).
+ * 채팅 입력: 고객이 첨부한 사진(multipart image0~2, 최대 3장)과 이어서 고칠 이전 결과(본인 ai-images 주소).
  * @return array{base: ?array{mime: string, bytes: string}, refs: list<array{mime: string, bytes: string}>}
  */
 function ai_inputs(array $body, string $userId): array
@@ -52,12 +52,12 @@ function ai_inputs(array $body, string $userId): array
         return ['mime' => $info['mime'], 'bytes' => $bytes];
     };
     $refs = [];
-    foreach (array_slice(is_array($body['images'] ?? null) ? $body['images'] : [], 0, 3) as $d) {
-        try {
-            $refs[] = $img(data_url_bytes((string) $d));
-        } catch (InvalidArgumentException) {
-            fail('사진을 읽지 못했습니다.');
-        }
+    // 사진은 multipart 파일(image0~2)로 받는다. 카페24 는 큰 JSON 본문(약 200KB 이상)을 502 로 끊는다
+    for ($i = 0; $i < 3; $i++) {
+        $f = $_FILES["image$i"] ?? null;
+        if (!is_array($f) || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+        if ($f['error'] !== UPLOAD_ERR_OK) fail('사진을 올리지 못했습니다. 7MB 이하 사진을 넣어 주세요.');
+        $refs[] = $img((string) file_get_contents($f['tmp_name']));
     }
     $base = null;
     $prefix = "/uploads/ai-images/$userId/";
@@ -188,9 +188,11 @@ function ai_lock(string $userId): mixed
     return $fh;
 }
 
+const AI_PENDING = '__pending__';
+
 function handle_ai_generate(array $user): never
 {
-    $body = request_json();
+    $body = $_POST ? ['prompt' => $_POST['prompt'] ?? '', 'style' => $_POST['style'] ?? '', 'base' => $_POST['base'] ?? '', 'history' => json_decode((string) ($_POST['history'] ?? '[]'), true)] : request_json();
     $prompt = mb_substr(trim((string) ($body['prompt'] ?? '')), 0, 500);
     $style = mb_substr(trim((string) ($body['style'] ?? '')), 0, 30);
     if (mb_strlen($prompt) < 2) fail('만들고 싶은 그림을 입력해 주세요.');
@@ -207,17 +209,40 @@ function handle_ai_generate(array $user): never
     $count = max(1, min(4, (int) cfg('ai_images_per_request', 2)));
     $id = uuid4();
     $provider = ai_provider_name();
+    // 화면을 떠나도(창 닫기·새로고침·Cloudflare 100초 제한) 끝까지 만들어 기록에 남긴다. 화면은 ai/history 로 다시 읽는다
+    ignore_user_abort(true);
+    @set_time_limit(300);
+    foreach ($inputs['refs'] as $i => $r) put_file('ai-images', "{$user['id']}/$id-ref$i." . (explode('/', $r['mime'])[1] === 'jpeg' ? 'jpg' : explode('/', $r['mime'])[1]), $r['bytes']);
+    $baseUrl = (string) ($body['base'] ?? '');
+    if ($inputs['base'] !== null) put_file('ai-images', "{$user['id']}/$id-base.txt", $baseUrl);
+    db_insert('ai_generations', ['id' => $id, 'user_id' => $user['id'], 'prompt' => $prompt, 'style' => $style, 'provider' => $provider, 'result_paths' => [], 'success' => false, 'error' => AI_PENDING, 'cost_estimate' => 0, 'kst_date' => kst_date()]);
     try {
         $images = ai_generate($prompt, $style, $count, $history, $inputs);
         $urls = [];
         foreach ($images as $i => $bytes) $urls[] = put_file('ai-images', "{$user['id']}/$id-$i.png", $bytes);
-        db_insert('ai_generations', ['id' => $id, 'user_id' => $user['id'], 'prompt' => $prompt, 'style' => $style, 'provider' => $provider, 'result_paths' => $urls, 'success' => true, 'error' => null, 'cost_estimate' => ai_cost_per_image() * count($urls), 'kst_date' => kst_date()]);
-        json_out(['images' => $urls, 'quota' => ['enabled' => true, 'limit' => $quota['limit'], 'used' => $quota['used'] + 1, 'remaining' => $quota['remaining'] - 1, 'styles' => $quota['styles']]]);
+        db_update('ai_generations', ['id' => $id], ['result_paths' => $urls, 'success' => true, 'error' => null, 'cost_estimate' => ai_cost_per_image() * count($urls)]);
+        json_out(['id' => $id, 'images' => $urls, 'quota' => ['enabled' => true, 'limit' => $quota['limit'], 'used' => $quota['used'] + 1, 'remaining' => $quota['remaining'] - 1, 'styles' => $quota['styles']]]);
     } catch (Throwable $e) {
         log_error('ai', $e);
-        db_insert('ai_generations', ['id' => $id, 'user_id' => $user['id'], 'prompt' => $prompt, 'style' => $style, 'provider' => $provider, 'result_paths' => [], 'success' => false, 'error' => mb_substr($e->getMessage(), 0, 500), 'cost_estimate' => 0, 'kst_date' => kst_date()]);
+        db_update('ai_generations', ['id' => $id], ['error' => mb_substr($e->getMessage(), 0, 500)]);
         fail('이미지를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.', 502, ['quota' => $quota]);
     } finally {
         if ($lock) { flock($lock, LOCK_UN); fclose($lock); }
     }
+}
+
+/** 에디터 AI 패널 대화 기록 (최근 30건, 오래된 것부터). 5분 넘게 끝나지 않은 요청은 실패로 본다 */
+function ai_history(string $userId): array
+{
+    $rows = array_reverse(db_select('ai_generations', ['user_id' => $userId], [['column' => 'created_at', 'ascending' => false]], 30));
+    $dir = storage_path('ai-images', $userId);
+    $out = [];
+    foreach ($rows as $g) {
+        $pending = !$g['success'] && $g['error'] === AI_PENDING;
+        $status = $g['success'] ? 'done' : ($pending && strtotime((string) $g['created_at']) > time() - 300 ? 'pending' : 'failed');
+        $refs = array_map(fn ($f) => file_url('ai-images', "$userId/" . basename($f)), glob("$dir/{$g['id']}-ref*") ?: []);
+        $baseFile = "$dir/{$g['id']}-base.txt";
+        $out[] = ['id' => $g['id'], 'prompt' => $g['prompt'], 'style' => $g['style'] !== '' ? $g['style'] : null, 'images' => $g['result_paths'] ?: [], 'refs' => $refs, 'base' => is_file($baseFile) ? (string) file_get_contents($baseFile) : null, 'status' => $status, 'created_at' => $g['created_at']];
+    }
+    return $out;
 }

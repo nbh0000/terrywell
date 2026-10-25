@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera, ChevronDown, FileUp, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { fmtMm, workSize, type DesignDoc, type LabelSpec } from "@/lib/editor/types";
@@ -42,7 +42,7 @@ export function ToolPanel(p: {
     case "design":
       return <DesignPanel ed={p.ed} templates={p.templates} />;
     case "ai":
-      return <AiPanel ed={p.ed} label={p.label} loggedIn={p.loggedIn} />;
+      return <AiPanel ed={p.ed} loggedIn={p.loggedIn} />;
     case "sticker":
       return <StickerPanel ed={p.ed} stickers={p.stickers} />;
     case "background":
@@ -262,10 +262,11 @@ function useAiMe() {
   return [me, setMe] as const;
 }
 
-type AiTurn = { prompt: string; style: string | null; refs: string[]; base: string | null; images?: string[]; error?: string };
+type AiTurn = { id?: string; prompt: string; style: string | null; refs: string[]; base: string | null; images?: string[]; status: "pending" | "done" | "failed"; error?: string };
 
-/** 채팅식 AI 패널: 글 + 사진 첨부로 요청하고, 결과를 골라 이어서 고칠 수 있다. 요청 1번 = 생성 1회 */
-function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; loggedIn: boolean }) {
+/** 채팅식 AI 패널: 글 + 사진 첨부로 요청하고, 결과를 골라 이어서 고칠 수 있다. 요청 1번 = 생성 1회.
+ *  대화는 서버 기록(ai/history)에서 읽어 패널을 닫거나 새로고침해도 남는다. 생성 중에 떠나도 서버가 끝까지 만든다 */
+function AiPanel({ ed, loggedIn }: { ed: EditorApi; loggedIn: boolean }) {
   const [me, setMe] = useAiMe();
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState<string | null>(null);
@@ -277,9 +278,35 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLLIElement>(null);
 
+  const [loaded, setLoaded] = useState(false);
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/history", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setTurns(data.turns.map((t: AiTurn) => ({ ...t, error: t.status === "failed" ? "이미지를 만들지 못했습니다." : undefined })));
+      if (data.quota) setMe((m) => (m ? { ...m, quota: data.quota } : m));
+    } catch {
+      /* 다음 확인 때 다시 */
+    } finally {
+      setLoaded(true);
+    }
+  }, [setMe]);
+  useEffect(() => {
+    if (!loggedIn) return;
+    const t = setTimeout(loadHistory, 0);
+    return () => clearTimeout(t);
+  }, [loggedIn, loadHistory]);
+  const waiting = !busy && turns.some((t) => t.status === "pending");
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(loadHistory, 4000);
+    return () => clearInterval(t);
+  }, [waiting, loadHistory]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest" });
-  }, [turns, busy]);
+  }, [turns, busy, loaded]);
 
   if (!loggedIn || me?.loggedIn === false) {
     return (
@@ -292,7 +319,8 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
   }
   const q = me?.quota;
   const styles = q?.styles ?? [];
-  const disabled = busy || !q || !q.enabled || q.remaining <= 0 || prompt.trim().length < 2;
+  const drafts = turns.flatMap((t) => t.images ?? []).reverse();
+  const disabled = busy || waiting || !q || !q.enabled || q.remaining <= 0 || prompt.trim().length < 2;
 
   async function attach(files: FileList | null) {
     if (!files) return;
@@ -310,7 +338,7 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
 
   async function send() {
     if (disabled) return;
-    const turn: AiTurn = { prompt: prompt.trim(), style, refs, base };
+    const turn: AiTurn = { prompt: prompt.trim(), style, refs, base, status: "pending" };
     const history = turns.map((t) => t.prompt);
     setTurns((t) => [...t, turn]);
     setPrompt("");
@@ -319,18 +347,23 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
     setErr(null);
     const done = (patch: Partial<AiTurn>) => setTurns((t) => t.map((x) => (x === turn ? { ...x, ...patch } : x)));
     try {
-      const res = await fetch("/api/ai/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: turn.prompt, style: style ?? "", images: turn.refs, base: turn.base ?? "", history, aspect: { w: label.widthMm, h: label.heightMm } }),
-      });
-      const data = await res.json();
+      // 사진은 파일로 보낸다 (서버가 큰 JSON 본문을 받지 못한다)
+      const form = new FormData();
+      form.set("prompt", turn.prompt);
+      form.set("style", style ?? "");
+      form.set("base", turn.base ?? "");
+      form.set("history", JSON.stringify(history));
+      for (const [i, u] of turn.refs.entries()) form.set(`image${i}`, await (await fetch(u)).blob(), `ref${i}.${u.startsWith("data:image/png") ? "png" : "jpg"}`);
+      const res = await fetch("/api/ai/generate", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({ error: `서버 응답 오류 (${res.status}). 잠시 후 다시 시도해 주세요.` }));
       if (data.quota) setMe((m) => (m ? { ...m, quota: data.quota, images: [...(data.images ?? []), ...(m.images ?? [])] } : m));
       if (!res.ok) throw new Error(data.error ?? "생성하지 못했습니다.");
-      done({ images: data.images });
       setBase(data.images?.[0] ?? null);
+      await loadHistory();
     } catch (e) {
-      done({ error: e instanceof Error ? e.message : "생성하지 못했습니다." });
+      done({ status: "failed", error: e instanceof Error ? e.message : "생성하지 못했습니다." });
+      // 서버에서는 계속 만들고 있을 수 있다 (응답만 끊긴 경우) → 기록으로 확인
+      await loadHistory();
     } finally {
       setBusy(false);
     }
@@ -338,7 +371,7 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
 
   return (
     <div>
-      {turns.length === 0 && (
+      {loaded && turns.length === 0 && (
         <p className="text-[12.5px] leading-relaxed text-muted">
           만들고 싶은 그림을 글로 적고, 참고할 사진이 있으면 함께 넣습니다. 결과가 나오면 이어서 &ldquo;배경을 더 밝게&rdquo;처럼 고칠 수 있습니다.
         </p>
@@ -361,6 +394,9 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
                 )}
               </div>
               {t.error && <p role="alert" className="mr-6 text-[12.5px] text-alert">{t.error}</p>}
+              {t.status === "pending" && !busy && (
+                <div className="mr-6 grid aspect-[68/48] w-1/2 animate-pulse place-items-center rounded-[6px] bg-cloud text-[12px] text-muted">만드는 중</div>
+              )}
               {t.images && (
                 <ul className="mr-6 grid grid-cols-2 gap-2">
                   {t.images.map((u) => (
@@ -437,6 +473,22 @@ function AiPanel({ ed, label, loggedIn }: { ed: EditorApi; label: LabelSpec; log
       {q && !q.enabled && <p className="mt-2 text-[12.5px] text-alert">지금은 AI 생성을 사용할 수 없습니다.</p>}
       {q && q.enabled && q.remaining <= 0 && <p className="mt-2 text-[12.5px] text-alert">오늘 무료 생성 횟수를 모두 사용했습니다. 내일 다시 이용할 수 있습니다.</p>}
       {err && <p role="alert" className="mt-2 text-[12.5px] text-alert">{err}</p>}
+
+      {drafts.length > 0 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <h3 className="text-[13px] text-muted">AI 시안 · 누르면 라벨에 들어갑니다</h3>
+          <ul className="mt-2 grid grid-cols-2 gap-2">
+            {drafts.map((u) => (
+              <li key={u}>
+                <button type="button" onClick={() => ed.addImage(u, "ai")} className="block w-full overflow-hidden rounded-[6px] border border-line transition-colors hover:border-ink">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt="AI 시안" loading="lazy" className="aspect-[68/48] w-full object-cover" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -82,6 +82,11 @@ try {
             if (!$u) json_out(['loggedIn' => false, 'quota' => null]);
             json_out(['loggedIn' => true, 'quota' => ai_quota($u['id'])]);
         }
+        case 'GET ai/history': {
+            $u = require_user();
+            require_once __DIR__ . '/_lib/ai.php';
+            json_out(['turns' => ai_history($u['id']), 'quota' => ai_quota($u['id'])]);
+        }
 
         case 'POST orders/create': {
             $u = require_user();

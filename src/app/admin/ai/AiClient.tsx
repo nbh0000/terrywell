@@ -87,7 +87,7 @@ export function AiClient() {
             <td className="px-4 py-2">{email(g.user_id)}</td>
             <td className="max-w-[320px] truncate px-4 py-2">{g.prompt}</td>
             <td className="px-4 py-2">{g.style || "-"}</td>
-            <td className="px-4 py-2">{g.success ? `${g.result_paths.length}장` : <span className="text-alert">실패</span>}</td>
+            <td className="px-4 py-2">{g.success ? `${g.result_paths.length}장` : g.error === "__pending__" ? <span className="text-muted">생성 중</span> : <span className="text-alert">실패</span>}</td>
           </tr>
         ))}
       </Table>
