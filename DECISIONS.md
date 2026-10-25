@@ -83,3 +83,6 @@
 - deploy.py 에 `config` 단계 추가 (키만 바뀌었을 때 config.php 만 올림). 운영 테스트 회원 test@terrywell.kr (비밀번호 secrets.txt TEST_PASSWORD).
 - (2026-10-25) 운영에서 사진을 넣으면 오류: 카페24 가 큰 JSON 본문(약 200KB 이상)을 502 HTML 로 끊음 → AI 요청을 multipart(사진 image0~2 파일)로 변경. 2.4MB 사진 통과 확인.
 - (2026-10-25) AI 대화 기록 유지: 요청 시작 때 ai_generations 에 생성 중(error='__pending__') 행을 넣고 끝나면 갱신, ignore_user_abort 로 화면을 떠나도 끝까지 생성. 패널은 `GET ai/history`(최근 30건, 참고사진·이어 고친 원본 포함)로 대화를 다시 그리고, 생성 중이면 4초마다 확인. 입력창 아래에 'AI 시안' 모음(누르면 라벨에 들어감).
+- (2026-10-25) AI 지시문을 "라벨에 인쇄될 평면 그림만"으로 변경(수건·라벨 목업 사진 금지). AI 시안은 라벨 작업 크기를 꽉 채워 넣음. 운영 실생성 3회로 확인(글만 17초 / 사진 첨부 / 이어서 고치기).
+- (2026-10-25) 동적 주소 화면 데이터(editor/x.txt, products/x.txt)가 404 → 클라이언트 이동 때마다 전체 새로고침되던 문제 수정(_page.php 가 __live.txt 로).
+- (2026-10-25) Cloudflare 경유 요청의 약 10~30% 가 522(원서버 연결 시간 초과). 서버 직접은 100% 정상, 같은 계정의 squick.kr·인천도어락24 도 같은 증상 → 카페24↔Cloudflare(HKG) 연결 문제. 코드로 해결 불가: 카페24 에 Cloudflare IP 허용 문의 또는 원서버 SSL 설치 후 DNS only 전환 검토.
