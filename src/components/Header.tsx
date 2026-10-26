@@ -65,16 +65,13 @@ export function Header() {
               <Link href="/login" className="inline-flex items-center gap-1 hover:text-point-dark"><LogIn size={13} strokeWidth={1.6} />로그인/회원가입</Link>
             )}
             <Link href="/guide" className="inline-flex items-center gap-1 hover:text-point-dark"><BookOpen size={13} strokeWidth={1.6} />이용가이드</Link>
-            {user?.role === "admin" && (
-              <Link href="/admin" className="hover:text-point-dark">관리자</Link>
-            )}
           </div>
         </div>
       </div>
 
       {/* 모바일: 햄버거 · 로고 · 장바구니 */}
       <div className="flex h-14 items-center justify-between px-4 lg:hidden">
-        <MobileMenu nav={NAV} loggedIn={!!user} isAdmin={user?.role === "admin"} />
+        <MobileMenu nav={NAV} loggedIn={!!user} />
         <Logo />
         <Link href="/cart" aria-label="장바구니" className="relative p-1 text-ink">
           <ShoppingBag size={22} strokeWidth={1.5} />

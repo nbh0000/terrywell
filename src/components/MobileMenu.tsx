@@ -10,11 +10,9 @@ import { logoutAction } from "@/app/(site)/(auth)/actions";
 export function MobileMenu({
   nav,
   loggedIn,
-  isAdmin,
 }: {
   nav: { href: string; label: string }[];
   loggedIn: boolean;
-  isAdmin: boolean;
 }) {
   const pathname = usePathname();
   // 연 페이지 경로를 기억해서, 다른 페이지로 이동하면 자동으로 닫힌다
@@ -36,7 +34,6 @@ export function MobileMenu({
     { href: "/mypage/wishlist", label: "찜" },
     { href: loggedIn ? "/mypage" : "/login", label: loggedIn ? "마이페이지" : "로그인/회원가입" },
     { href: "/guide", label: "이용가이드" },
-    ...(isAdmin ? [{ href: "/admin", label: "관리자" }] : []),
   ];
 
   return (

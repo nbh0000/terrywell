@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { fmtMm, workSize, type DesignDoc, type LabelSpec, type MockupSpec } from "@/lib/editor/types";
 import { addDesignToCartAction, saveDesignAction } from "@/app/editor/[slug]/actions";
-import { saveTemplateAction } from "@/app/admin/templates/actions";
+import { saveTemplateAction } from "@/app/admin/(panel)/templates/actions";
 import { GUIDE, type ToolKey } from "./constants";
 import { renderPage, renderPrintPng } from "./fabric-setup";
 import { useLabelCanvas } from "./useLabelCanvas";

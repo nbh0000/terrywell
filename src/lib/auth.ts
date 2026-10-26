@@ -57,9 +57,10 @@ export async function requireUser(next: string): Promise<Profile> {
   return user;
 }
 
+// 관리자 화면은 쇼핑몰 로그인과 따로 /admin/login 으로 들어온다
 export async function requireAdmin(): Promise<Profile> {
-  const user = await requireUser("/admin");
-  if (user.role !== "admin") throw new RedirectSignal("/");
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") throw new RedirectSignal(`/admin/login?next=${encodeURIComponent(typeof window === "undefined" ? "/admin" : window.location.pathname)}`);
   return user;
 }
 

@@ -111,7 +111,7 @@ def admin_part(page, visit, report):
         page.wait_for_timeout(1500)
     except Exception:  # noqa: BLE001
         pass
-    page.goto(BASE + "/login?next=/admin", wait_until="networkidle")
+    page.goto(BASE + "/admin/login", wait_until="networkidle")
     import re, io
     if "--live" in sys.argv:
         sec = dict(l.split("=", 1) for l in io.open("C:/Users/pc/terrywell/cafe24/secrets.txt", encoding="utf-8").read().splitlines() if "=" in l and not l.startswith("#"))

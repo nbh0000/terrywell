@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const MENU = [
+export const MENU = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/products", label: "제품 관리" },
   { href: "/admin/templates", label: "템플릿" },
@@ -19,18 +19,17 @@ const MENU = [
   { href: "/admin/site", label: "사이트 설정" },
 ];
 
-export function AdminNav() {
+export const isActive = (path: string, href: string) => (href === "/admin" ? path === "/admin" : path.startsWith(href));
+
+export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   return (
-    <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-white p-2 [scrollbar-width:none] lg:w-52 lg:flex-col lg:border-b-0 lg:border-r lg:p-3">
-      {MENU.map((m) => {
-        const active = m.href === "/admin" ? path === "/admin" : path.startsWith(m.href);
-        return (
-          <Link key={m.href} href={m.href} className={`shrink-0 rounded-[6px] px-3 py-2 text-[14px] ${active ? "bg-ink text-white" : "text-ink/80 hover:bg-cloud"}`}>
-            {m.label}
-          </Link>
-        );
-      })}
+    <nav aria-label="관리자 메뉴" className="flex flex-col gap-0.5">
+      {MENU.map((m) => (
+        <Link key={m.href} href={m.href} onClick={onNavigate} aria-current={isActive(path, m.href) ? "page" : undefined} className={`rounded-[6px] px-3 py-2.5 text-[14px] ${isActive(path, m.href) ? "bg-ink text-white" : "text-ink/80 hover:bg-cloud"}`}>
+          {m.label}
+        </Link>
+      ))}
     </nav>
   );
 }

@@ -45,7 +45,8 @@ export function usePageData<T>(loader: () => Promise<T>, deps: unknown[] = [], e
           return;
         }
         if (e instanceof ApiError && e.unauthorized) {
-          window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+          const here = window.location.pathname + window.location.search;
+          window.location.replace(`${here.startsWith("/admin") ? "/admin/login" : "/login"}?next=${encodeURIComponent(here)}`);
           return;
         }
         setError(e instanceof Error ? e.message : "불러오지 못했습니다.");
